@@ -1,0 +1,33 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/ph0sphor-core",
+    "crates/ph0sphor-protocol",
+    "crates/ph0sphor-server",
+    "crates/ph0sphor-client",
+    "crates/ph0sphorctl",
+]
+
+[workspace.package]
+version = "0.0.1"
+edition = "2021"
+rust-version = "1.75"
+license = "MIT"
+repository = "https://github.com/akberdin/ph0sphor"
+authors = ["PHOSPHOR contributors"]
+
+[workspace.dependencies]
+ph0sphor-core = { path = "crates/ph0sphor-core", version = "0.0.1" }
+ph0sphor-protocol = { path = "crates/ph0sphor-protocol", version = "0.0.1" }
+
+# Keep this list lean. New dependencies must be justified per CONTRIBUTING.md.
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "1"
+
+[profile.release]
+opt-level = "z"
+lto = "thin"
+codegen-units = 1
+strip = "symbols"
+panic = "abort"

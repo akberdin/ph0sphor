@@ -1,0 +1,17 @@
+[package]
+name = "ph0sphor-client"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "PHOSPHOR client: lightweight phosphor-style telemetry TUI for the Sony VAIO P."
+
+[[bin]]
+name = "ph0sphor-client"
+path = "src/main.rs"
+
+[dependencies]
+ph0sphor-core = { workspace = true }
+ph0sphor-protocol = { workspace = true }

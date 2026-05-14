@@ -1,0 +1,48 @@
+# PHOSPHOR server example configuration.
+# See docs/configuration.md and README §18.1 for the canonical reference.
+
+[server]
+bind = "0.0.0.0:7077"
+name = "main-pc"
+protocol = "protobuf"
+debug_json = false
+
+[security]
+pairing_enabled = true
+require_token = true
+allow_control_commands = false
+
+[performance]
+main_tick_ms = 1000
+send_deltas_only = true
+full_snapshot_interval_sec = 60
+max_events_in_memory = 200
+
+[collectors.cpu]
+enabled = true
+interval_ms = 1000
+
+[collectors.memory]
+enabled = true
+interval_ms = 1000
+
+[collectors.network]
+enabled = true
+interval_ms = 1000
+
+[collectors.disk]
+enabled = true
+interval_sec = 15
+
+[collectors.gpu]
+enabled = true
+interval_sec = 3
+
+[collectors.mail]
+enabled = false
+interval_sec = 120
+privacy = "sender_subject"
+
+[collectors.weather]
+enabled = false
+interval_sec = 1800

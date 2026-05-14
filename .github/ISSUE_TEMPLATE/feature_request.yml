@@ -1,0 +1,58 @@
+name: Feature request
+description: Propose a new feature or capability for PHOSPHOR.
+title: "[feat] <short summary>"
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before proposing a feature, please read README §27 ("Development
+        Rules for Language Models and Contributors") and answer the
+        questions in §27.2.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What problem does this feature solve?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: How should it work?
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: rule_check
+    attributes:
+      label: Core rule check
+      description: Confirm the proposal preserves the core rule.
+      options:
+        - label: Keeps the client lightweight.
+          required: true
+        - label: Keeps server overhead low.
+          required: true
+        - label: Preserves the read-only default.
+          required: true
+        - label: Minimizes network traffic.
+          required: true
+        - label: Works without a mouse.
+          required: true
+        - label: Degrades gracefully when data is unavailable.
+          required: true
+        - label: Fits the retro terminal concept.
+          required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Additional notes

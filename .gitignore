@@ -1,0 +1,23 @@
+# Rust
+/target
+**/*.rs.bk
+Cargo.lock.bak
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/
+
+# Local config / secrets
+*.local.toml
+*.secret
+.env
+.env.*
+!.env.example
+
+# Build artifacts
+/dist
+/out

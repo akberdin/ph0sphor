@@ -1,0 +1,120 @@
+// PHOSPHOR wire protocol — placeholder schema for Milestone 0.
+//
+// Milestone 1 fills this in. The shape below is a sketch intended to
+// communicate intent, not a final contract. Field numbers may change
+// before the protocol version reaches v1 stable.
+
+syntax = "proto3";
+
+package ph0sphor.v1;
+
+// ----- Envelope -----
+
+message Envelope {
+  uint32 protocol_version = 1;
+  oneof payload {
+    Hello              hello              = 10;
+    AuthRequest        auth_request       = 11;
+    AuthResponse       auth_response      = 12;
+    PairingRequest     pairing_request    = 13;
+    PairingChallenge   pairing_challenge  = 14;
+    PairingConfirm     pairing_confirm    = 15;
+    FullSnapshot       full_snapshot      = 20;
+    DeltaUpdate        delta_update       = 21;
+    Event              event              = 22;
+    Ping               ping               = 30;
+    Pong               pong               = 31;
+    Error              error              = 40;
+  }
+}
+
+// ----- Handshake -----
+
+message Hello {
+  string client_id = 1;
+  string client_version = 2;
+}
+
+message AuthRequest { string token = 1; }
+message AuthResponse {
+  bool ok = 1;
+  string reason = 2;
+}
+
+message PairingRequest { string client_id = 1; }
+message PairingChallenge { string code = 1; }
+message PairingConfirm { string code = 1; }
+
+// ----- Telemetry -----
+
+message FullSnapshot {
+  uint64 timestamp_unix_ms = 1;
+  string hostname = 2;
+  string os = 3;
+  uint64 uptime_secs = 4;
+  CpuMetrics cpu = 5;
+  MemoryMetrics memory = 6;
+  repeated DiskMetrics disks = 7;
+  repeated NetworkMetrics network = 8;
+}
+
+message DeltaUpdate {
+  uint64 timestamp_unix_ms = 1;
+  // Sparse set of changed fields. Concrete encoding lands in Milestone 1.
+  bytes payload = 2;
+}
+
+message CpuMetrics {
+  float usage_percent = 1;
+  optional float temperature_c = 2;
+  optional uint32 core_count = 3;
+}
+
+message MemoryMetrics {
+  uint64 used_bytes = 1;
+  uint64 total_bytes = 2;
+  optional uint64 swap_used_bytes = 3;
+  optional uint64 swap_total_bytes = 4;
+}
+
+message DiskMetrics {
+  string mount = 1;
+  uint64 used_bytes = 2;
+  uint64 total_bytes = 3;
+  optional float temperature_c = 4;
+}
+
+message NetworkMetrics {
+  string interface = 1;
+  uint64 rx_bytes_per_sec = 2;
+  uint64 tx_bytes_per_sec = 3;
+  optional uint64 rx_total_bytes = 4;
+  optional uint64 tx_total_bytes = 5;
+}
+
+// ----- Events -----
+
+enum Severity {
+  SEVERITY_UNSPECIFIED = 0;
+  SEVERITY_INFO = 1;
+  SEVERITY_WARN = 2;
+  SEVERITY_CRITICAL = 3;
+}
+
+message Event {
+  uint64 timestamp_unix_ms = 1;
+  Severity severity = 2;
+  string kind = 3;        // e.g. "new_mail", "threshold_crossed"
+  string message = 4;     // human-readable, redacted
+  map<string, string> attributes = 5;
+}
+
+// ----- Liveness and errors -----
+
+message Ping { uint64 nonce = 1; }
+message Pong { uint64 nonce = 1; }
+
+message Error {
+  string code = 1;
+  string message = 2;
+}

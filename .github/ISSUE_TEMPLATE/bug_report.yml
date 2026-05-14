@@ -1,0 +1,60 @@
+name: Bug report
+description: Report unexpected behavior in the server, client, or CLI.
+title: "[bug] <short summary>"
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for filing a bug. Please confirm you've read the README's
+        "Core Design Decision" section (§2) so we can rule out
+        misunderstandings of intentional constraints.
+
+  - type: input
+    id: component
+    attributes:
+      label: Component
+      description: server, client, ctl, protocol, core, docs?
+      placeholder: client
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Output of `--version` for the affected binary.
+      placeholder: ph0sphor-client 0.0.1 (protocol v1)
+    validations:
+      required: true
+
+  - type: textarea
+    id: what_happened
+    attributes:
+      label: What happened?
+      description: Describe the actual behavior.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: |
+        Minimal reproduction, including config snippets if relevant.
+        **Do not paste secrets.**
+    validations:
+      required: true
+
+  - type: textarea
+    id: env
+    attributes:
+      label: Environment
+      description: OS, kernel, terminal emulator, hardware (especially if VAIO P or similar).

@@ -1,0 +1,27 @@
+# PHOSPHOR client example configuration.
+# See docs/configuration.md and README §18.2 for the canonical reference.
+
+[client]
+server = "ws://main-pc.local:7077"
+client_name = "vaio-p"
+theme = "phosphor-green"
+render_fps = 1
+low_power_mode = true
+
+[ui]
+default_screen = "home"
+show_scanlines = false
+ascii_fallback = true
+compact_mode = true
+
+[cache]
+store_last_snapshot = true
+max_cached_events = 100
+
+[keys]
+next_screen = "Tab"
+prev_screen = "BackTab"
+theme_cycle = "C"
+mute = "M"
+refresh = "R"
+quit = "Q"

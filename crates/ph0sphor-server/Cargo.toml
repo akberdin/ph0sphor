@@ -1,0 +1,18 @@
+[package]
+name = "ph0sphor-server"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "PHOSPHOR server: collectors, state store and binary telemetry endpoint."
+
+[[bin]]
+name = "ph0sphor-server"
+path = "src/main.rs"
+
+[dependencies]
+ph0sphor-core = { workspace = true }
+ph0sphor-protocol = { workspace = true }
+serde = { workspace = true }
