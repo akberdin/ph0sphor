@@ -28,3 +28,27 @@ and this project aspires to follow [Semantic Versioning](https://semver.org/).
 - Reusable protocol fixtures and a 9-test round-trip suite covering
   Hello, FullSnapshot (incl. through-domain), DeltaUpdate, Event, JSON
   parity with Protobuf, and version-mismatch handling.
+- Server (Milestone 2): `ph0sphor-server` becomes a real binary built on
+  `tokio` + `axum` 0.7 (ws) + `sysinfo`. Components:
+  - TOML config loader (`ServerConfig` mirroring README §18.1), with
+    `interval_ms`/`interval_sec` aliasing and `demo()` defaults.
+  - In-memory `State` store using `std::sync::RwLock<Snapshot>` and a
+    `tokio::sync::watch` notify channel so per-client tasks wake on
+    change instead of polling.
+  - CPU/memory/disk/network/uptime collectors as independent `tokio`
+    tasks with `MissedTickBehavior::Skip` and cooperative shutdown via
+    `Notify`. Missing metrics become `None`, not fatal errors.
+  - Demo collector producing deterministic sinusoidal telemetry for
+    `--demo`, integration tests and future screenshots.
+  - Token auth stub (`AuthConfig::validate`) with constant-time compare
+    against a config-supplied allowlist; `require_token = false` paths
+    accept any token. Pairing lands in Milestone 5.
+  - WebSocket endpoint at `/ws` with the Hello → AuthRequest →
+    AuthResponse → FullSnapshot(initial) → FullSnapshot-on-change
+    handshake, Ping/Pong handling and a 5 s safety snapshot tick.
+    Graceful shutdown via `axum::serve(...).with_graceful_shutdown`.
+  - CLI flags `--config`, `--demo`, `--version`, `--help` with structured
+    `tracing-subscriber` logging.
+- Integration test boots a real server on a loopback ephemeral port,
+  connects via `tokio-tungstenite`, completes the handshake and asserts
+  CPU/RAM/disk/network all present — the Milestone 2 "done" criterion.

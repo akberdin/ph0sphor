@@ -48,16 +48,20 @@ Met by `crates/ph0sphor-protocol/tests/round_trip.rs`.
 Goal: a working server that exposes basic telemetry.
 
 ```
-[ ] Implement config loading.
-[ ] Implement CPU collector.
-[ ] Implement memory collector.
-[ ] Implement disk collector.
-[ ] Implement network collector.
-[ ] Implement state store.
-[ ] Implement WebSocket binary endpoint.
-[ ] Implement basic token auth stub.
-[ ] Implement demo data generator.
+[x] Implement config loading.
+[x] Implement CPU collector.
+[x] Implement memory collector.
+[x] Implement disk collector.
+[x] Implement network collector.
+[x] Implement state store.
+[x] Implement WebSocket binary endpoint.
+[x] Implement basic token auth stub.
+[x] Implement demo data generator.
 ```
+
+Done when a client or debug tool can receive live CPU/RAM/DISK/NET
+snapshots. Met by
+`crates/ph0sphor-server/tests/ws_handshake.rs::server_streams_full_snapshot_to_authenticated_client`.
 
 ## Milestone 3 — Minimal VAIO Client
 
