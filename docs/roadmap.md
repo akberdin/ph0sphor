@@ -89,15 +89,20 @@ phosphor-style TUI. Net layer covered by
 Goal: make the system efficient enough for continuous use.
 
 ```
-[ ] Render only on state changes.
-[ ] Send deltas instead of full snapshots where possible.
-[ ] Add configurable collector intervals.
-[ ] Add network usage logging.
-[ ] Add server self-monitoring.
-[ ] Add client self-monitoring.
-[ ] Add low-power mode.
-[ ] Add bounded queues.
+[x] Render only on state changes.
+[x] Send deltas instead of full snapshots where possible.
+[x] Add configurable collector intervals.
+[x] Add network usage logging.
+[x] Add server self-monitoring.
+[x] Add client self-monitoring.
+[x] Add low-power mode.
+[x] Add bounded queues.
 ```
+
+Done when normal operation uses minimal CPU, memory and network
+bandwidth. Delta encoding + coalescing + per-session byte logging
+implemented in `ph0sphor-protocol::delta`, `ph0sphor-server::net` and
+`ph0sphor-client::net`. See `docs/performance-budget.md`.
 
 ## Milestone 5 — Security Pass
 

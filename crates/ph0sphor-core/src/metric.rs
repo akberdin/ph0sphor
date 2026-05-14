@@ -1,13 +1,13 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct CpuMetrics {
     pub usage_percent: f32,
     pub temperature_c: Option<f32>,
     pub core_count: Option<u32>,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct MemoryMetrics {
     pub used_bytes: u64,
     pub total_bytes: u64,
@@ -15,7 +15,7 @@ pub struct MemoryMetrics {
     pub swap_total_bytes: Option<u64>,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct DiskMetrics {
     pub mount: String,
     pub used_bytes: u64,
@@ -23,7 +23,7 @@ pub struct DiskMetrics {
     pub temperature_c: Option<f32>,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct NetworkMetrics {
     pub interface: String,
     pub rx_bytes_per_sec: u64,
@@ -33,7 +33,7 @@ pub struct NetworkMetrics {
 }
 
 /// A full telemetry snapshot. Wire encoding lives in `ph0sphor-protocol`.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct Snapshot {
     pub timestamp_unix_ms: u64,
     pub hostname: String,

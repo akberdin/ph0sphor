@@ -83,3 +83,31 @@ and this project aspires to follow [Semantic Versioning](https://semver.org/).
   client WS task against it, and asserts the snapshot the TUI would
   render carries live CPU/RAM/disk/network — the Milestone 3 "done"
   criterion at the network layer.
+- Performance pass (Milestone 4):
+  - `ph0sphor-protocol::delta` with `compute_delta`, `apply_delta` and
+    `is_empty`. Uses a 0.5 pp epsilon on CPU usage / CPU temperature
+    so steady-state collector jitter never reaches the wire.
+  - `PartialEq` derives on `ph0sphor-core` metric types so wire-level
+    repeated fields (disks, network) can be compared structurally.
+  - Server session loop rewrites: per-client `last_sent_wire`,
+    coalescing via `performance.min_send_interval_ms` (default 500 ms),
+    periodic `FullSnapshot` every `full_snapshot_interval_sec`
+    (default 60 s), and a `serve_with_perf` API to thread the config.
+    Default `send_deltas_only = true` flips the wire to delta-mostly.
+  - Server-side per-session self-monitoring: bytes sent, full
+    snapshots, deltas and suppressed empty-deltas, logged at INFO when
+    the session ends with avg bytes/sec.
+  - Client `AppEvent::Delta`; `state::apply` calls
+    `ph0sphor_protocol::delta::apply_delta`. Client tracks
+    `SessionStats` (bytes received, full / delta counts) and emits a
+    summary log line on disconnect.
+  - Client honours `low_power_mode`: clock tick falls from 1 s to 2 s.
+  - Bounded queues documented and verified: `watch` capacity 1 on the
+    server, `mpsc::channel(64)` on the client app loop, awaited socket
+    sends instead of internal buffering.
+  - New tests: 7 protocol delta tests (incl. epsilon noise filter,
+    empty-delta no-op, domain round-trip), 1 server integration test
+    (`server_emits_delta_after_state_change`), 1 client unit test
+    (`delta_event_patches_snapshot_in_place`).
+  - `docs/performance-budget.md` gains "Coalescing and Delta
+    Encoding", "Bounded Queues" and "Self-Monitoring" sections.

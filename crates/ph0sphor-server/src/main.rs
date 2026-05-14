@@ -5,7 +5,7 @@ use ph0sphor_server::{
     auth::AuthConfig,
     collectors::{spawn_demo, spawn_real, Collectors},
     config::ServerConfig,
-    net::serve,
+    net::serve_with_perf,
     state::State,
 };
 use std::process::ExitCode;
@@ -117,7 +117,8 @@ async fn run(config: Option<String>, demo: bool) -> Result<(), Box<dyn std::erro
     };
 
     let auth = AuthConfig::from_security(&cfg.security);
-    let mut handle = serve(&cfg.server.bind, state, auth).await?;
+    let mut handle =
+        serve_with_perf(&cfg.server.bind, state, auth, cfg.performance.clone()).await?;
     info!(addr = %handle.local_addr, "ph0sphor-server ready");
 
     tokio::signal::ctrl_c().await?;

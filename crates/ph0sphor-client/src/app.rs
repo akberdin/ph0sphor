@@ -42,9 +42,16 @@ pub async fn run<B: Backend>(
     // Input task: forwards crossterm key events into the app channel.
     let input_handle = spawn_input(tx.clone(), shutdown.clone());
 
-    // Clock tick: 1 Hz, drives the on-screen clock without depending on
-    // server snapshots arriving.
-    let clock_handle = spawn_clock(tx.clone(), shutdown.clone());
+    // Clock tick: 1 Hz normally, 0.5 Hz under low-power mode. Drives
+    // the on-screen clock without depending on server snapshots
+    // arriving. Slowing the tick is the cheapest way to honour
+    // README §13.2's "1-2 FPS" cap on the VAIO P.
+    let tick_period = if config.client.low_power_mode {
+        Duration::from_secs(2)
+    } else {
+        Duration::from_secs(1)
+    };
+    let clock_handle = spawn_clock(tx.clone(), shutdown.clone(), tick_period);
 
     // Data source: real WS client or demo source.
     let net_handle = if options.demo {
@@ -114,9 +121,13 @@ fn spawn_input(tx: mpsc::Sender<AppEvent>, shutdown: Arc<Notify>) -> tokio::task
     })
 }
 
-fn spawn_clock(tx: mpsc::Sender<AppEvent>, shutdown: Arc<Notify>) -> tokio::task::JoinHandle<()> {
+fn spawn_clock(
+    tx: mpsc::Sender<AppEvent>,
+    shutdown: Arc<Notify>,
+    period: Duration,
+) -> tokio::task::JoinHandle<()> {
     tokio::spawn(async move {
-        let mut ticker = tokio::time::interval(Duration::from_secs(1));
+        let mut ticker = tokio::time::interval(period);
         ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
         // First tick fires immediately; skip it so the initial render
         // (already done before this task started) isn't repeated.

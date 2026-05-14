@@ -6,14 +6,15 @@
 //! wire. This is the canonical "done" criterion for Milestone 2.
 
 use futures_util::{SinkExt, StreamExt};
+use ph0sphor_core::{CpuMetrics, MemoryMetrics};
 use ph0sphor_protocol::{
     decode, encode, envelope, fixtures::FIXTURE_PROTOCOL_VERSION, AuthRequest, Hello, Payload,
 };
 use ph0sphor_server::{
     auth::AuthConfig,
     collectors::spawn_demo,
-    config::{SecuritySection, ServerConfig},
-    net::serve,
+    config::{PerformanceSection, SecuritySection, ServerConfig},
+    net::{serve, serve_with_perf},
     state::State,
 };
 use std::time::Duration;
@@ -122,6 +123,83 @@ async fn server_rejects_invalid_token_when_required() {
     handle.shutdown_and_join().await;
     collectors.shutdown();
     collectors.join().await;
+}
+
+#[tokio::test]
+async fn server_emits_delta_after_state_change() {
+    // No collectors — drive state changes manually so the test is fully
+    // deterministic. Token disabled and min_send_interval set short so
+    // coalescing doesn't dominate the test runtime.
+    let mut cfg = ServerConfig::default();
+    cfg.server.bind = "127.0.0.1:0".to_string();
+    cfg.security.require_token = false;
+    let perf = PerformanceSection {
+        min_send_interval_ms: 50,
+        full_snapshot_interval_sec: 3600, // out of the way
+        send_deltas_only: true,
+        ..PerformanceSection::default()
+    };
+
+    let state = State::new("test-host".into(), "test-os".into());
+    state.update_cpu(CpuMetrics {
+        usage_percent: 10.0,
+        temperature_c: None,
+        core_count: Some(8),
+    });
+    state.update_memory(MemoryMetrics {
+        used_bytes: 1_000_000_000,
+        total_bytes: 8_000_000_000,
+        ..MemoryMetrics::default()
+    });
+
+    let auth = AuthConfig::from_security(&cfg.security);
+    let handle = serve_with_perf(&cfg.server.bind, state.clone(), auth, perf)
+        .await
+        .unwrap();
+
+    let url = format!("ws://{}/ws", handle.local_addr);
+    let (mut ws, _) = tokio_tungstenite::connect_async(&url).await.unwrap();
+
+    // Handshake.
+    let hello = envelope(Payload::Hello(Hello {
+        client_id: "test-client".into(),
+        client_version: "0.0.1".into(),
+    }));
+    ws.send(WsMessage::Binary(encode(&hello))).await.unwrap();
+    let req = envelope(Payload::AuthRequest(AuthRequest {
+        token: String::new(),
+    }));
+    ws.send(WsMessage::Binary(encode(&req))).await.unwrap();
+    let resp = recv_envelope(&mut ws).await;
+    matches!(resp.payload, Some(Payload::AuthResponse(_)));
+
+    // Initial FullSnapshot.
+    let initial = recv_envelope(&mut ws).await;
+    let Some(Payload::FullSnapshot(_)) = initial.payload else {
+        panic!("expected initial FullSnapshot, got {:?}", initial.payload);
+    };
+
+    // Mutate state — this should cause the server to emit a DeltaUpdate
+    // with cpu_usage_percent populated.
+    state.update_cpu(CpuMetrics {
+        usage_percent: 85.0,
+        temperature_c: None,
+        core_count: Some(8),
+    });
+
+    // The next envelope must be a DeltaUpdate carrying the changed CPU.
+    let next = recv_envelope(&mut ws).await;
+    let Some(Payload::DeltaUpdate(d)) = next.payload else {
+        panic!("expected DeltaUpdate, got {:?}", next.payload);
+    };
+    assert_eq!(d.cpu_usage_percent, Some(85.0));
+    assert!(
+        d.memory_used_bytes.is_none(),
+        "memory should not be re-sent"
+    );
+
+    let _ = ws.close(None).await;
+    handle.shutdown_and_join().await;
 }
 
 async fn recv_envelope<S>(ws: &mut S) -> ph0sphor_protocol::Envelope

@@ -67,15 +67,26 @@ pub struct PerformanceSection {
     pub send_deltas_only: bool,
     pub full_snapshot_interval_sec: u64,
     pub max_events_in_memory: usize,
+    /// Minimum interval between successive payloads to a single
+    /// client. State updates that arrive faster are coalesced so the
+    /// client receives at most one payload per `min_send_interval_ms`
+    /// (README §13.2: keep network usage low, avoid constant redraws).
+    #[serde(default = "default_min_send_interval_ms")]
+    pub min_send_interval_ms: u64,
+}
+
+fn default_min_send_interval_ms() -> u64 {
+    500
 }
 
 impl Default for PerformanceSection {
     fn default() -> Self {
         Self {
             main_tick_ms: 1000,
-            send_deltas_only: false,
+            send_deltas_only: true,
             full_snapshot_interval_sec: 60,
             max_events_in_memory: 200,
+            min_send_interval_ms: default_min_send_interval_ms(),
         }
     }
 }

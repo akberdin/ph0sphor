@@ -67,19 +67,24 @@ async fn run(
         let _ = tx
             .send(AppEvent::Connection(ConnectionStatus::Connecting))
             .await;
-        let session = run_session(&server_url, &client_id, &token, &tx);
+        let started = std::time::Instant::now();
+        let mut stats = SessionStats::default();
+        let session = run_session(&server_url, &client_id, &token, &tx, &mut stats);
 
         tokio::select! {
-            res = session => match res {
-                Ok(()) => {
-                    let _ = tx.send(AppEvent::Connection(ConnectionStatus::Disconnected)).await;
-                    let _ = tx.send(AppEvent::Log(LogLine::info("server closed connection"))).await;
+            res = session => {
+                emit_session_summary(&tx, &stats, started.elapsed()).await;
+                match res {
+                    Ok(()) => {
+                        let _ = tx.send(AppEvent::Connection(ConnectionStatus::Disconnected)).await;
+                        let _ = tx.send(AppEvent::Log(LogLine::info("server closed connection"))).await;
+                    }
+                    Err(e) => {
+                        let _ = tx.send(AppEvent::Connection(ConnectionStatus::Offline)).await;
+                        let _ = tx.send(AppEvent::Log(LogLine::warn(format!("link error: {e}")))).await;
+                    }
                 }
-                Err(e) => {
-                    let _ = tx.send(AppEvent::Connection(ConnectionStatus::Offline)).await;
-                    let _ = tx.send(AppEvent::Log(LogLine::warn(format!("link error: {e}")))).await;
-                }
-            },
+            }
             _ = shutdown.notified() => return,
         }
 
@@ -93,11 +98,37 @@ async fn run(
     }
 }
 
+#[derive(Debug, Default, Clone, Copy)]
+pub struct SessionStats {
+    pub bytes_received: u64,
+    pub full_snapshots: u64,
+    pub deltas: u64,
+}
+
+async fn emit_session_summary(
+    tx: &mpsc::Sender<AppEvent>,
+    stats: &SessionStats,
+    elapsed: Duration,
+) {
+    let secs = elapsed.as_secs().max(1);
+    let _ = tx
+        .send(AppEvent::Log(LogLine::info(format!(
+            "link stats: {} B in {}s ({} B/s) — full={}, delta={}",
+            stats.bytes_received,
+            secs,
+            stats.bytes_received / secs,
+            stats.full_snapshots,
+            stats.deltas
+        ))))
+        .await;
+}
+
 async fn run_session(
     url: &str,
     client_id: &str,
     token: &str,
     tx: &mpsc::Sender<AppEvent>,
+    stats: &mut SessionStats,
 ) -> Result<(), ClientError> {
     let (mut ws, _) = tokio_tungstenite::connect_async(url).await?;
     let _ = tx
@@ -134,11 +165,19 @@ async fn run_session(
     while let Some(msg) = ws.next().await {
         match msg? {
             WsMessage::Binary(bytes) => {
+                stats.bytes_received += bytes.len() as u64;
                 let env = decode(&bytes)?;
                 match env.payload {
                     Some(Payload::FullSnapshot(snap)) => {
                         let domain: ph0sphor_core::Snapshot = (&snap).into();
+                        stats.full_snapshots += 1;
                         if tx.send(AppEvent::Snapshot(domain)).await.is_err() {
+                            return Ok(());
+                        }
+                    }
+                    Some(Payload::DeltaUpdate(delta)) => {
+                        stats.deltas += 1;
+                        if tx.send(AppEvent::Delta(delta)).await.is_err() {
                             return Ok(());
                         }
                     }
@@ -150,9 +189,7 @@ async fn run_session(
                             ))))
                             .await;
                     }
-                    Some(Payload::Pong(_)) | Some(Payload::DeltaUpdate(_)) => {
-                        // Delta application lands in Milestone 4.
-                    }
+                    Some(Payload::Pong(_)) => {}
                     Some(Payload::Error(err)) => {
                         let _ = tx
                             .send(AppEvent::Log(LogLine::critical(format!(

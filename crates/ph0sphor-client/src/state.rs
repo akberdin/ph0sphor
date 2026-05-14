@@ -100,6 +100,10 @@ impl AppState {
                 self.snapshot = snap;
                 true
             }
+            AppEvent::Delta(delta) => {
+                ph0sphor_protocol::delta::apply_delta(&mut self.snapshot, &delta);
+                true
+            }
             AppEvent::Connection(status) => {
                 if self.connection != status {
                     self.push_log(LogSeverity::Info, format!("LINK: {}", status.label()));
@@ -222,6 +226,37 @@ mod tests {
         };
         assert!(app.apply(AppEvent::Snapshot(snap)));
         assert_eq!(app.snapshot.cpu.usage_percent, 42.5);
+    }
+
+    #[test]
+    fn delta_event_patches_snapshot_in_place() {
+        use ph0sphor_protocol::wire::DeltaUpdate;
+        let mut app = AppState::new(ClientConfig::default());
+        // Seed with a snapshot so we have something to patch.
+        let seed = Snapshot {
+            cpu: CpuMetrics {
+                usage_percent: 10.0,
+                ..CpuMetrics::default()
+            },
+            ..Snapshot::default()
+        };
+        app.apply(AppEvent::Snapshot(seed));
+
+        // Apply a delta that only changes cpu_usage_percent.
+        let delta = DeltaUpdate {
+            timestamp_unix_ms: 123,
+            cpu_usage_percent: Some(72.5),
+            cpu_temperature_c: None,
+            memory_used_bytes: None,
+            memory_total_bytes: None,
+            disks: vec![],
+            network: vec![],
+        };
+        assert!(app.apply(AppEvent::Delta(delta)));
+        assert_eq!(app.snapshot.cpu.usage_percent, 72.5);
+        // Other fields are untouched.
+        assert_eq!(app.snapshot.cpu.temperature_c, None);
+        assert_eq!(app.snapshot.timestamp_unix_ms, 123);
     }
 
     #[test]

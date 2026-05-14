@@ -20,6 +20,7 @@ use prost::Message as _;
 use thiserror::Error;
 
 pub mod convert;
+pub mod delta;
 pub mod fixtures;
 
 pub mod wire {

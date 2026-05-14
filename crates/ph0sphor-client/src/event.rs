@@ -7,15 +7,21 @@
 
 use crossterm::event::KeyEvent;
 use ph0sphor_core::Snapshot;
+use ph0sphor_protocol::wire::DeltaUpdate;
 
 #[derive(Debug)]
 pub enum AppEvent {
     Key(KeyEvent),
-    /// Local clock tick (1 Hz). Drives the on-screen clock without
-    /// requiring a snapshot from the server.
+    /// Local clock tick — drives the on-screen clock without requiring
+    /// a snapshot from the server. Frequency is throttled to 2 s when
+    /// `low_power_mode` is enabled.
     Tick,
     /// A fresh telemetry snapshot from the server.
     Snapshot(Snapshot),
+    /// A partial telemetry update from the server. Empty deltas are
+    /// filtered server-side and should not appear here, but the client
+    /// applies them tolerantly anyway.
+    Delta(DeltaUpdate),
     /// Connection state changed.
     Connection(ConnectionStatus),
     /// Free-form log line — connection lifecycle, server events,
