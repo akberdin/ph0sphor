@@ -52,3 +52,34 @@ and this project aspires to follow [Semantic Versioning](https://semver.org/).
 - Integration test boots a real server on a loopback ephemeral port,
   connects via `tokio-tungstenite`, completes the handshake and asserts
   CPU/RAM/disk/network all present — the Milestone 2 "done" criterion.
+- Client (Milestone 3): `ph0sphor-client` becomes a real TUI on
+  `ratatui` 0.29 + `crossterm` 0.28, with a single-worker tokio runtime
+  to keep the VAIO P budget honest.
+  - `config.rs`: `ClientConfig` mirrors README §18.2; parses
+    `examples/client.toml` verbatim (asserted by a unit test).
+  - `theme.rs`: five palettes (`phosphor-green`, `amber-crt`,
+    `ice-terminal`, `mono-lcd`, `high-contrast`) with `C`-key cycling.
+  - `state.rs`: `AppState` owns current snapshot, connection status,
+    current screen and a bounded event log. Single `apply(AppEvent)`
+    entry point returns whether a redraw is warranted.
+  - `event.rs`: one `AppEvent` enum (key/tick/snapshot/connection/log/
+    quit) flowing through a single `mpsc::Receiver`. `LogLine` and
+    `LogSeverity` model client- and server-originating notices.
+  - `net.rs`: production WS client task with Hello → AuthRequest →
+    AuthResponse → Snapshot stream, exponential backoff reconnect
+    (1 s → 30 s), wire→domain `Snapshot` conversion at the boundary,
+    and a `spawn_demo` source for `--demo`.
+  - `ui.rs`: HOME (CPU/RAM/disk gauges + recent events), SYS (detailed
+    CPU/memory/swap/disks/network), LOG (full scrollback), status bar
+    with screen tabs and theme/mute/refresh hints. ASCII fallback ready.
+  - `app.rs`: low-power render loop — draw on dirty events only, 1 Hz
+    clock tick task drives the on-screen clock, input task uses
+    `crossterm::event::EventStream`. Cooperative shutdown via `Notify`.
+  - `main.rs`: CLI flags `--config`, `--server`, `--token`, `--demo`,
+    `--version`, `--help`; raw-mode + alternate-screen lifecycle with a
+    panic hook that always restores the terminal.
+- Integration test in `crates/ph0sphor-client/tests/handshake.rs` boots
+  a real `ph0sphor-server` on a loopback port, runs the production
+  client WS task against it, and asserts the snapshot the TUI would
+  render carries live CPU/RAM/disk/network — the Milestone 3 "done"
+  criterion at the network layer.

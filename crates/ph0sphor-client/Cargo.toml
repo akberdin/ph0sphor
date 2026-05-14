@@ -12,6 +12,27 @@ description = "PHOSPHOR client: lightweight phosphor-style telemetry TUI for the
 name = "ph0sphor-client"
 path = "src/main.rs"
 
+[lib]
+path = "src/lib.rs"
+
 [dependencies]
 ph0sphor-core = { workspace = true }
 ph0sphor-protocol = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }
+tokio = { version = "1", features = [
+    "rt-multi-thread",
+    "macros",
+    "signal",
+    "sync",
+    "time",
+] }
+tokio-tungstenite = "0.24"
+futures-util = "0.3"
+ratatui = "0.29"
+crossterm = { version = "0.28", features = ["event-stream"] }
+toml = "0.8"
+
+[dev-dependencies]
+ph0sphor-server = { path = "../ph0sphor-server" }
+tokio = { version = "1", features = ["test-util"] }

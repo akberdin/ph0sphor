@@ -68,16 +68,21 @@ snapshots. Met by
 Goal: display live telemetry on the VAIO P in terminal UI.
 
 ```
-[ ] Implement WebSocket client.
-[ ] Implement auth handshake.
-[ ] Implement reconnect logic.
-[ ] Implement HOME screen.
-[ ] Implement SYS screen.
-[ ] Implement LOG screen.
-[ ] Implement theme support.
-[ ] Implement screen switching.
-[ ] Implement low-power render loop.
+[x] Implement WebSocket client.
+[x] Implement auth handshake.
+[x] Implement reconnect logic.
+[x] Implement HOME screen.
+[x] Implement SYS screen.
+[x] Implement LOG screen.
+[x] Implement theme support.
+[x] Implement screen switching.
+[x] Implement low-power render loop.
 ```
+
+Done when the VAIO P displays live workstation telemetry in a
+phosphor-style TUI. Net layer covered by
+`crates/ph0sphor-client/tests/handshake.rs`; UI exercised manually via
+`ph0sphor-client --demo`.
 
 ## Milestone 4 — Performance Pass
 
