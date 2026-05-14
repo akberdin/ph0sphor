@@ -4,8 +4,12 @@ Authoritative description of the wire protocol used between the server and
 the client. Production transport: Protobuf-over-WebSocket binary frames.
 Debug transport: JSON (development and tests only).
 
-The current Protobuf schema lives in `proto/ph0sphor.proto`. The schema is
-intentionally minimal at the Milestone 0 stage; Milestone 1 fills it in.
+The current Protobuf schema lives in `proto/ph0sphor.proto`. Milestone 1
+defines the full message family and round-trip tests live in
+`crates/ph0sphor-protocol/tests/round_trip.rs`.
+
+Code generation uses `prost-build` with a vendored `protoc` from the
+`protoc-bin-vendored` crate, so no system `protoc` is required to build.
 
 ## Versioning
 

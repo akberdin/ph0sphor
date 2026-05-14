@@ -17,3 +17,14 @@ and this project aspires to follow [Semantic Versioning](https://semver.org/).
 - Placeholder Protobuf schema in `proto/ph0sphor.proto`.
 - GitHub Actions CI workflow (fmt, clippy, build, test).
 - Issue templates for bug reports and feature requests.
+- Protocol (Milestone 1): full Protobuf schema for `Envelope`, `Hello`,
+  `AuthRequest`/`AuthResponse`, `PairingRequest`/`PairingChallenge`/
+  `PairingConfirm`, `FullSnapshot`, `DeltaUpdate`, `Event`, `Ping`/`Pong`
+  and `ErrorMessage`, generated via `prost` with a vendored `protoc`.
+- `ph0sphor-protocol::encode`/`decode` (Protobuf, version-checked) and
+  `encode_json`/`decode_json`/`encode_json_pretty` (debug mirror).
+- Domain↔wire conversions (`From` impls) for `Snapshot`, `CpuMetrics`,
+  `MemoryMetrics`, `DiskMetrics`, `NetworkMetrics`.
+- Reusable protocol fixtures and a 9-test round-trip suite covering
+  Hello, FullSnapshot (incl. through-domain), DeltaUpdate, Event, JSON
+  parity with Protobuf, and version-mismatch handling.

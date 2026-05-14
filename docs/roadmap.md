@@ -30,15 +30,18 @@ will be built.
 Goal: define the data contract before building UI complexity.
 
 ```
-[ ] Define Protobuf schema.
-[ ] Define FullSnapshot message.
-[ ] Define DeltaUpdate message.
-[ ] Define Event message.
-[ ] Define Hello/Auth messages.
-[ ] Add protocol versioning.
-[ ] Add test fixtures.
-[ ] Add debug JSON dump.
+[x] Define Protobuf schema.
+[x] Define FullSnapshot message.
+[x] Define DeltaUpdate message.
+[x] Define Event message.
+[x] Define Hello/Auth messages.
+[x] Add protocol versioning.
+[x] Add test fixtures.
+[x] Add debug JSON dump.
 ```
+
+Done when a test can encode and decode a realistic telemetry snapshot.
+Met by `crates/ph0sphor-protocol/tests/round_trip.rs`.
 
 ## Milestone 2 — Minimal Server
 
