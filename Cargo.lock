@@ -815,6 +815,7 @@ dependencies = [
  "ph0sphor-core",
  "ph0sphor-protocol",
  "serde",
+ "serde_json",
  "sysinfo",
  "thiserror",
  "tokio",

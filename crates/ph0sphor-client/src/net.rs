@@ -16,7 +16,7 @@
 use crate::event::{AppEvent, ConnectionStatus, LogLine};
 use futures_util::{SinkExt, StreamExt};
 use ph0sphor_core::APP_VERSION;
-use ph0sphor_protocol::{decode, encode, envelope, AuthRequest, Hello, Payload};
+use ph0sphor_protocol::{decode, encode, envelope, AuthRequest, Hello, PairingRequest, Payload};
 use std::sync::Arc;
 use std::time::Duration;
 use thiserror::Error;
@@ -142,19 +142,45 @@ async fn run_session(
     }));
     ws.send(WsMessage::Binary(encode(&hello))).await?;
 
-    // Send AuthRequest.
-    let req = envelope(Payload::AuthRequest(AuthRequest {
-        token: token.to_string(),
-    }));
-    ws.send(WsMessage::Binary(encode(&req))).await?;
+    if token.is_empty() {
+        // ---- Pairing flow --------------------------------------------
+        let pair_req = envelope(Payload::PairingRequest(PairingRequest {
+            client_id: client_id.to_string(),
+        }));
+        ws.send(WsMessage::Binary(encode(&pair_req))).await?;
 
-    // Wait for AuthResponse.
-    let resp = recv_envelope(&mut ws).await?;
-    let Some(Payload::AuthResponse(r)) = resp.payload else {
-        return Err(ClientError::Unexpected);
-    };
-    if !r.ok {
-        return Err(ClientError::AuthRejected(r.reason));
+        // First reply is PairingChallenge.
+        let challenge_env = recv_envelope(&mut ws).await?;
+        let Some(Payload::PairingChallenge(challenge)) = challenge_env.payload else {
+            return Err(ClientError::Unexpected);
+        };
+        let _ = tx
+            .send(AppEvent::PairingChallenge(challenge.code.clone()))
+            .await;
+
+        // Second reply is PairingConfirm with the issued token.
+        let confirm_env = recv_envelope(&mut ws).await?;
+        let Some(Payload::PairingConfirm(confirm)) = confirm_env.payload else {
+            return Err(ClientError::Unexpected);
+        };
+        if confirm.token.is_empty() {
+            return Err(ClientError::AuthRejected("empty pairing token".into()));
+        }
+        let _ = tx.send(AppEvent::TokenIssued(confirm.token.clone())).await;
+    } else {
+        // ---- Token-auth flow -----------------------------------------
+        let req = envelope(Payload::AuthRequest(AuthRequest {
+            token: token.to_string(),
+        }));
+        ws.send(WsMessage::Binary(encode(&req))).await?;
+
+        let resp = recv_envelope(&mut ws).await?;
+        let Some(Payload::AuthResponse(r)) = resp.payload else {
+            return Err(ClientError::Unexpected);
+        };
+        if !r.ok {
+            return Err(ClientError::AuthRejected(r.reason));
+        }
     }
 
     let _ = tx

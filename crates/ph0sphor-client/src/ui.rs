@@ -34,12 +34,61 @@ pub fn draw(frame: &mut Frame, app: &AppState) {
         .split(area);
 
     render_header(frame, chunks[0], app, &palette);
-    match app.screen {
-        Screen::Home => render_home(frame, chunks[1], app, &palette),
-        Screen::Sys => render_sys(frame, chunks[1], app, &palette),
-        Screen::Log => render_log(frame, chunks[1], app, &palette),
+    if let Some(code) = app.pairing_code.as_deref() {
+        render_pairing_banner(frame, chunks[1], code, &palette);
+    } else {
+        match app.screen {
+            Screen::Home => render_home(frame, chunks[1], app, &palette),
+            Screen::Sys => render_sys(frame, chunks[1], app, &palette),
+            Screen::Log => render_log(frame, chunks[1], app, &palette),
+        }
     }
     render_status_bar(frame, chunks[2], app, &palette);
+}
+
+fn render_pairing_banner(frame: &mut Frame, area: Rect, code: &str, palette: &ThemePalette) {
+    let lines = vec![
+        Line::raw(""),
+        Line::from(Span::styled(
+            "PAIRING REQUIRED",
+            Style::default()
+                .fg(palette.accent)
+                .add_modifier(Modifier::BOLD),
+        )),
+        Line::raw(""),
+        Line::from(Span::styled(
+            format!("CODE: {code}"),
+            Style::default()
+                .fg(palette.warning)
+                .add_modifier(Modifier::BOLD),
+        )),
+        Line::raw(""),
+        Line::from(Span::styled(
+            "On the server host, confirm with:",
+            Style::default().fg(palette.fg),
+        )),
+        Line::from(Span::styled(
+            format!("  ph0sphorctl pair confirm {code}"),
+            Style::default().fg(palette.accent),
+        )),
+        Line::raw(""),
+        Line::from(Span::styled(
+            "(awaiting operator…)",
+            Style::default().fg(palette.dim),
+        )),
+    ];
+    let p = Paragraph::new(lines).block(
+        Block::default()
+            .borders(Borders::ALL)
+            .border_style(Style::default().fg(palette.warning))
+            .title(Span::styled(
+                " PAIRING ",
+                Style::default()
+                    .fg(palette.accent)
+                    .add_modifier(Modifier::BOLD),
+            )),
+    );
+    frame.render_widget(p, area);
 }
 
 // ---------------------------------------------------------------------------

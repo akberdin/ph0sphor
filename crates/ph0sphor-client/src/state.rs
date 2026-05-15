@@ -67,6 +67,11 @@ pub struct AppState {
     pub events_cap: usize,
     pub muted: bool,
     pub quit: bool,
+    /// Active pairing code waiting for operator confirmation. Cleared
+    /// on `TokenIssued`. Displayed prominently in the header so the
+    /// user can read it off the screen and run the matching
+    /// `ph0sphorctl pair confirm` on the server.
+    pub pairing_code: Option<String>,
 }
 
 impl AppState {
@@ -88,6 +93,7 @@ impl AppState {
             events_cap,
             muted: false,
             quit: false,
+            pairing_code: None,
         }
     }
 
@@ -113,6 +119,23 @@ impl AppState {
             }
             AppEvent::Log(line) => {
                 self.push_log(line.severity, line.text);
+                true
+            }
+            AppEvent::PairingChallenge(code) => {
+                self.pairing_code = Some(code.clone());
+                self.push_log(
+                    LogSeverity::Warn,
+                    format!("PAIRING CODE: {code} — confirm on server"),
+                );
+                true
+            }
+            AppEvent::TokenIssued(_) => {
+                // The raw token is not put through the visible log: it
+                // would leak the secret onto the screen. We mark the
+                // pairing as done and let the app loop persist the
+                // token off-screen.
+                self.pairing_code = None;
+                self.push_log(LogSeverity::Info, "client paired — token stored".into());
                 true
             }
             AppEvent::Quit => {

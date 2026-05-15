@@ -3,6 +3,9 @@
 
 [server]
 bind = "0.0.0.0:7077"
+# Loopback-only HTTP endpoint used by `ph0sphorctl pair confirm`.
+# Non-loopback peers are rejected even if this binds to a public IP.
+control_bind = "127.0.0.1:7078"
 name = "main-pc"
 protocol = "protobuf"
 debug_json = false
@@ -10,7 +13,15 @@ debug_json = false
 [security]
 pairing_enabled = true
 require_token = true
+# Arbitrary remote command execution is forbidden in MVP per README §14.2;
+# the server has no `ClientCommandRequest` handler regardless of this flag.
 allow_control_commands = false
+# Persistent token store written by the pairing flow. Tokens here are
+# merged with the static `tokens` list for validation. Keep it outside
+# of the repository and use restrictive filesystem permissions (the
+# server writes the file with mode 0600 on Unix).
+token_store = "/var/lib/ph0sphor/tokens.json"
+# pairing_ttl_secs = 300   # default: 5 minutes
 
 [performance]
 main_tick_ms = 1000

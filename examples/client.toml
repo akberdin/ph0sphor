@@ -2,8 +2,13 @@
 # See docs/configuration.md and README §18.2 for the canonical reference.
 
 [client]
-server = "ws://main-pc.local:7077"
+server = "ws://main-pc.local:7077/ws"
 client_name = "vaio-p"
+# Bearer token presented at handshake. Leave empty on first run — the
+# client will fall into the pairing flow and write the issued token to
+# `token_file` after the operator confirms the displayed code.
+token = ""
+token_file = "~/.config/ph0sphor/token"
 theme = "phosphor-green"
 render_fps = 1
 low_power_mode = true

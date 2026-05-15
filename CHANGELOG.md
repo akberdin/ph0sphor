@@ -111,3 +111,52 @@ and this project aspires to follow [Semantic Versioning](https://semver.org/).
     (`delta_event_patches_snapshot_in_place`).
   - `docs/performance-budget.md` gains "Coalescing and Delta
     Encoding", "Bounded Queues" and "Self-Monitoring" sections.
+- Security pass (Milestone 5):
+  - `PairingConfirm.token` (field 2) added to the wire schema so the
+    server can deliver issued tokens over the same WebSocket the
+    client already trusts.
+  - `ph0sphor-server::auth` rewritten: `TokenStore` (in-memory or
+    JSON-on-disk, atomic rename + 0600 perms on Unix), `PairingManager`
+    (HashMap of pending codes with TTL, oneshot per pending session),
+    `AuthConfig` façade that validates against the static allowlist
+    **and** the persisted store in constant time.
+  - 192-bit hex tokens generated from `/dev/urandom` with a
+    time-based LCG fallback; 8-character `ABCD-1234` pairing codes use
+    an alphabet without `0/O/1/I` to avoid operator typos.
+  - `redact_token()` keeps the first four chars then `…`; every
+    server-side log site that mentions a token now goes through it.
+  - `ph0sphor-server::control`: loopback-only HTTP listener with one
+    route, `POST /control/pair/confirm`. `is_loopback()` check on every
+    request, regardless of bind address. Wired through `serve_control`
+    and a `ControlHandle` symmetric with the WS server.
+  - WS session forks after `Hello`: `AuthRequest` continues the M2 path,
+    `PairingRequest` triggers code issue, then blocks on the operator
+    confirmation, then sends `PairingConfirm` with the freshly issued
+    token. Drops gracefully on client close mid-pairing.
+  - `ph0sphorctl pair confirm <code> [--server URL]`: std-only HTTP
+    client (`TcpStream` + raw HTTP/1.1) so no new dependency. Default
+    target is `http://127.0.0.1:7078`.
+  - Client: empty `client.token` triggers the pairing flow. The TUI
+    shows a dedicated PAIRING banner with the code and the exact
+    `ph0sphorctl` command. `AppEvent::TokenIssued` is intercepted by
+    the app loop **before** `state.apply` so the raw token is written
+    to `client.token_file` (mode 0600) without ever passing through
+    the visible event log. `main.rs` reads the persisted token at
+    startup so already-paired clients skip pairing on reconnect.
+  - `examples/server.toml` documents `control_bind`, `token_store`,
+    `pairing_ttl_secs`; `examples/client.toml` documents `token` and
+    `token_file`.
+  - `docs/security-model.md` expanded with the full pairing flow,
+    code/token lifetimes, redaction guarantees and the read-only
+    default reaffirmation. `SECURITY.md` continues to be the
+    user-facing summary.
+  - Read-only default and "no remote command execution" reaffirmed:
+    `ClientCommandRequest` is still absent from the wire schema and
+    nothing in `ph0sphor-server::net` dispatches on it — the
+    `allow_control_commands = true` flag is a no-op until a future
+    milestone wires an allowlisted set of commands.
+  - 5 new auth unit tests (redact, pairing request/confirm,
+    unknown-code, expired-code, store-persist), 1 new control unit
+    test (loopback POST → token issued), 1 new client integration test
+    `client_pairs_then_receives_token_and_snapshot` exercising the
+    full server + WS + control + client flow.

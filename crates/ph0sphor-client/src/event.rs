@@ -24,6 +24,12 @@ pub enum AppEvent {
     Delta(DeltaUpdate),
     /// Connection state changed.
     Connection(ConnectionStatus),
+    /// Server has issued a pairing code; the operator must confirm it
+    /// via `ph0sphorctl pair confirm <code>` on the server host.
+    PairingChallenge(String),
+    /// Server has confirmed the pairing and issued a token. The app
+    /// loop persists this to disk and uses it for future reconnects.
+    TokenIssued(String),
     /// Free-form log line — connection lifecycle, server events,
     /// client-side notices. Server `Event` payloads are folded into
     /// this until typed event routing lands in Milestone 6.

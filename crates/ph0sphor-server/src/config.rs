@@ -33,6 +33,10 @@ pub struct ServerConfig {
 #[serde(default)]
 pub struct ServerSection {
     pub bind: String,
+    /// Loopback-only HTTP control endpoint. Used by `ph0sphorctl` to
+    /// confirm pairing codes. The handler explicitly rejects non-loopback
+    /// peers (see `control::pair_confirm`).
+    pub control_bind: String,
     pub name: String,
     pub protocol: String,
     pub debug_json: bool,
@@ -42,6 +46,7 @@ impl Default for ServerSection {
     fn default() -> Self {
         Self {
             bind: "127.0.0.1:7077".to_string(),
+            control_bind: "127.0.0.1:7078".to_string(),
             name: "phosphor".to_string(),
             protocol: "protobuf".to_string(),
             debug_json: false,
@@ -54,10 +59,26 @@ impl Default for ServerSection {
 pub struct SecuritySection {
     pub pairing_enabled: bool,
     pub require_token: bool,
+    /// Remote command execution. Always disabled in MVP per README §14.2.
+    /// Even setting this to `true` does not enable arbitrary shell
+    /// commands; the server has no `ClientCommandRequest` handler.
     pub allow_control_commands: bool,
-    /// Stub: explicit allowlist of accepted client tokens. Pairing
-    /// (Milestone 5) will replace this with server-issued tokens.
+    /// Static, manually-administered token allowlist. Useful for testing
+    /// and headless deployments. Production deployments should rely on
+    /// `token_store` instead.
     pub tokens: Vec<String>,
+    /// Optional path to a JSON file holding server-issued tokens
+    /// produced by pairing. Loaded on startup; appended to on each
+    /// successful pairing. Tokens in this file are merged with `tokens`
+    /// for validation.
+    pub token_store: Option<String>,
+    /// Pairing-code time-to-live in seconds. Defaults to 300 (5 min).
+    #[serde(default = "default_pairing_ttl_secs")]
+    pub pairing_ttl_secs: u64,
+}
+
+fn default_pairing_ttl_secs() -> u64 {
+    300
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

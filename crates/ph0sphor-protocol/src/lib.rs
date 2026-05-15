@@ -148,6 +148,8 @@ mod debug_json {
         },
         PairingConfirm {
             code: String,
+            #[serde(default)]
+            token: String,
         },
         FullSnapshot(FullSnapshot),
         DeltaUpdate(DeltaUpdate),
@@ -186,6 +188,7 @@ mod debug_json {
                 },
                 Payload::PairingConfirm(m) => PayloadJson::PairingConfirm {
                     code: m.code.clone(),
+                    token: m.token.clone(),
                 },
                 Payload::FullSnapshot(m) => PayloadJson::FullSnapshot(m.clone()),
                 Payload::DeltaUpdate(m) => PayloadJson::DeltaUpdate(m.clone()),
@@ -222,8 +225,8 @@ mod debug_json {
                 PayloadJson::PairingChallenge { code } => {
                     Payload::PairingChallenge(PairingChallenge { code })
                 }
-                PayloadJson::PairingConfirm { code } => {
-                    Payload::PairingConfirm(PairingConfirm { code })
+                PayloadJson::PairingConfirm { code, token } => {
+                    Payload::PairingConfirm(PairingConfirm { code, token })
                 }
                 PayloadJson::FullSnapshot(m) => Payload::FullSnapshot(m),
                 PayloadJson::DeltaUpdate(m) => Payload::DeltaUpdate(m),

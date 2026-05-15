@@ -18,7 +18,7 @@
 //! already seen and computes deltas against it. A periodic full
 //! snapshot (default 60 s, configurable) protects against drift.
 
-use crate::auth::AuthConfig;
+use crate::auth::{redact_token, AuthConfig};
 use crate::config::PerformanceSection;
 use crate::state::State;
 use axum::{
@@ -30,7 +30,9 @@ use axum::{
     routing::get,
     Router,
 };
-use ph0sphor_protocol::{decode, delta, encode, envelope, wire, ErrorMessage, Payload};
+use ph0sphor_protocol::{
+    decode, delta, encode, envelope, wire, ErrorMessage, PairingChallenge, PairingConfirm, Payload,
+};
 use std::net::SocketAddr;
 use std::time::{Duration, Instant};
 use tokio::net::TcpListener;
@@ -174,26 +176,84 @@ async fn run_session(socket: &mut WebSocket, app: &AppState) -> Result<SessionSt
     };
     debug!(client_id = %hello.client_id, "hello received");
 
-    let auth_env = recv_envelope(socket).await?;
-    let Some(Payload::AuthRequest(req)) = auth_env.payload else {
-        return Err(SessionError::Unexpected);
-    };
-    let ok = app.auth.validate(&req.token);
+    let next_env = recv_envelope(socket).await?;
+    match next_env.payload {
+        Some(Payload::AuthRequest(req)) => {
+            let ok = app.auth.validate(&req.token);
+            let resp = envelope(Payload::AuthResponse(ph0sphor_protocol::AuthResponse {
+                ok,
+                reason: if ok {
+                    String::new()
+                } else {
+                    "invalid token".to_string()
+                },
+            }));
+            socket.send(Message::Binary(encode(&resp))).await?;
+            if !ok {
+                warn!(
+                    client_id = %hello.client_id,
+                    presented = %redact_token(&req.token),
+                    "client auth rejected",
+                );
+                return Err(SessionError::AuthFailed);
+            }
+            info!(client_id = %hello.client_id, "client authenticated");
+        }
+        Some(Payload::PairingRequest(req)) => {
+            if !app.auth.pairing_enabled() {
+                let resp = envelope(Payload::Error(ErrorMessage {
+                    code: "pairing_disabled".into(),
+                    message: "server pairing is disabled".into(),
+                }));
+                socket.send(Message::Binary(encode(&resp))).await?;
+                return Err(SessionError::AuthFailed);
+            }
+            let pairing_client_id = if req.client_id.is_empty() {
+                hello.client_id.clone()
+            } else {
+                req.client_id
+            };
+            let (code, rx) = app.auth.pairing().request(&pairing_client_id);
+            let challenge = envelope(Payload::PairingChallenge(PairingChallenge {
+                code: code.clone(),
+            }));
+            socket.send(Message::Binary(encode(&challenge))).await?;
+            info!(
+                client_id = %pairing_client_id,
+                code = %code,
+                "awaiting operator confirmation for pairing",
+            );
 
-    let resp = envelope(Payload::AuthResponse(ph0sphor_protocol::AuthResponse {
-        ok,
-        reason: if ok {
-            String::new()
-        } else {
-            "invalid token".to_string()
-        },
-    }));
-    socket.send(Message::Binary(encode(&resp))).await?;
-    if !ok {
-        warn!(client_id = %hello.client_id, "client auth rejected");
-        return Err(SessionError::AuthFailed);
+            let issued = tokio::select! {
+                res = rx => res.map_err(|_| SessionError::AuthFailed)?,
+                _ = tokio::time::sleep(std::time::Duration::from_secs(300)) => {
+                    return Err(SessionError::AuthFailed);
+                }
+                msg = socket.recv() => {
+                    // Client closing while we wait — drop the pending entry.
+                    match msg {
+                        None | Some(Ok(Message::Close(_))) => return Err(SessionError::EarlyClose),
+                        Some(Err(e)) => return Err(e.into()),
+                        _ => return Err(SessionError::Unexpected),
+                    }
+                }
+            };
+
+            let confirm = envelope(Payload::PairingConfirm(PairingConfirm {
+                code,
+                token: issued.token.clone(),
+            }));
+            socket.send(Message::Binary(encode(&confirm))).await?;
+            // Issued token is implicitly authenticated; do not require a
+            // second AuthRequest. Fall through to the streaming loop.
+            info!(
+                client_id = %issued.client_id,
+                token = %redact_token(&issued.token),
+                "client paired and authenticated",
+            );
+        }
+        _ => return Err(SessionError::Unexpected),
     }
-    info!(client_id = %hello.client_id, "client authenticated");
 
     // ---- Streaming ----------------------------------------------------
     let mut stats = SessionStats::default();

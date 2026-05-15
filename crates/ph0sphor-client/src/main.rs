@@ -124,6 +124,14 @@ fn load_config(
     if let Some(t) = token_override {
         cfg.client.token = t;
     }
+    // If no inline token was provided, try the persisted token file so
+    // we don't accidentally re-pair an already-paired client.
+    if cfg.client.token.is_empty() {
+        let from_file = ph0sphor_client::app::load_token(&cfg.client.token_file);
+        if !from_file.is_empty() {
+            cfg.client.token = from_file;
+        }
+    }
     Ok(cfg)
 }
 

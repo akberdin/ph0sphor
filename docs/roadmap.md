@@ -109,15 +109,21 @@ implemented in `ph0sphor-protocol::delta`, `ph0sphor-server::net` and
 Goal: make the default system safe for LAN usage.
 
 ```
-[ ] Implement pairing.
-[ ] Implement client token storage.
-[ ] Implement token validation.
-[ ] Add secret redaction.
-[ ] Confirm read-only default mode.
-[ ] Document threat model.
-[ ] Document mail privacy model.
-[ ] Disable remote command execution by default.
+[x] Implement pairing.
+[x] Implement client token storage.
+[x] Implement token validation.
+[x] Add secret redaction.
+[x] Confirm read-only default mode.
+[x] Document threat model.
+[x] Document mail privacy model.
+[x] Disable remote command execution by default.
 ```
+
+Done when a new client can be paired securely and cannot execute
+arbitrary server commands. Validated by
+`crates/ph0sphor-client/tests/pairing.rs::client_pairs_then_receives_token_and_snapshot`,
+which drives the full pairing path through a real WS link and the
+loopback control endpoint.
 
 ## Milestone 6 — Useful Features
 

@@ -66,6 +66,9 @@ message PairingChallenge {
 
 message PairingConfirm {
   string code = 1;
+  // Token issued by the server. Empty until the operator confirms the
+  // pairing code; the client must persist it before reconnecting.
+  string token = 2;
 }
 
 // ============================================================================

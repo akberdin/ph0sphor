@@ -9,6 +9,7 @@ use crossterm::event::{Event as CtEvent, EventStream};
 use futures_util::StreamExt;
 use ratatui::backend::Backend;
 use ratatui::Terminal;
+use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
 use thiserror::Error;
@@ -72,6 +73,19 @@ pub async fn run<B: Backend>(
     terminal.draw(|f| ui::draw(f, &state))?;
 
     while let Some(event) = rx.recv().await {
+        // Persist pairing-issued tokens before the event is consumed by
+        // state.apply, which intentionally drops the raw token to avoid
+        // putting it on the visible log.
+        if let AppEvent::TokenIssued(token) = &event {
+            if let Err(e) = persist_token(&state.config.client.token_file, token) {
+                state.events.push_front(crate::state::LogEntry {
+                    timestamp_unix_ms: crate::state::now_unix_ms(),
+                    severity: crate::event::LogSeverity::Warn,
+                    text: format!("failed to persist token: {e}"),
+                });
+            }
+        }
+
         let dirty = state.apply(event);
         if state.quit {
             break;
@@ -92,6 +106,41 @@ pub async fn run<B: Backend>(
     .await;
 
     Ok(())
+}
+
+/// Write `token` to `path` with restrictive permissions so a server-
+/// issued secret never lingers world-readable on disk. An empty
+/// `path` disables persistence (in-memory pairing only).
+pub fn persist_token(path: &str, token: &str) -> std::io::Result<()> {
+    if path.is_empty() {
+        return Ok(());
+    }
+    let p = Path::new(path);
+    if let Some(parent) = p.parent() {
+        if !parent.as_os_str().is_empty() {
+            std::fs::create_dir_all(parent)?;
+        }
+    }
+    let tmp = p.with_extension("tmp");
+    std::fs::write(&tmp, token)?;
+    std::fs::rename(&tmp, p)?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let _ = std::fs::set_permissions(p, std::fs::Permissions::from_mode(0o600));
+    }
+    Ok(())
+}
+
+/// Read a previously-issued token from `path`, returning the trimmed
+/// contents. Missing files yield an empty string (no token).
+pub fn load_token(path: &str) -> String {
+    if path.is_empty() {
+        return String::new();
+    }
+    std::fs::read_to_string(path)
+        .map(|s| s.trim().to_string())
+        .unwrap_or_default()
 }
 
 fn spawn_input(tx: mpsc::Sender<AppEvent>, shutdown: Arc<Notify>) -> tokio::task::JoinHandle<()> {

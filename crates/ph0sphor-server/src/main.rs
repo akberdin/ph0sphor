@@ -2,9 +2,10 @@
 
 use ph0sphor_core::{APP_VERSION, PROTOCOL_VERSION};
 use ph0sphor_server::{
-    auth::AuthConfig,
+    auth::{AuthConfig, TokenStore},
     collectors::{spawn_demo, spawn_real, Collectors},
     config::ServerConfig,
+    control::serve_control,
     net::serve_with_perf,
     state::State,
 };
@@ -116,7 +117,15 @@ async fn run(config: Option<String>, demo: bool) -> Result<(), Box<dyn std::erro
         spawn_real(state.clone(), &cfg.collectors)
     };
 
-    let auth = AuthConfig::from_security(&cfg.security);
+    let store = match cfg.security.token_store.as_deref() {
+        Some(path) => TokenStore::load_or_create(path)?,
+        None => TokenStore::in_memory(),
+    };
+    let auth = AuthConfig::build(&cfg.security, store);
+
+    let mut control = serve_control(&cfg.server.control_bind, auth.clone()).await?;
+    info!(addr = %control.local_addr, "control endpoint ready");
+
     let mut handle =
         serve_with_perf(&cfg.server.bind, state, auth, cfg.performance.clone()).await?;
     info!(addr = %handle.local_addr, "ph0sphor-server ready");
@@ -125,8 +134,10 @@ async fn run(config: Option<String>, demo: bool) -> Result<(), Box<dyn std::erro
     info!("ctrl-c received, shutting down");
 
     handle.shutdown();
+    control.shutdown();
     collectors.shutdown();
     handle.join().await;
+    control.join().await;
     collectors.join().await;
     Ok(())
 }

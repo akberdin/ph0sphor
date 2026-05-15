@@ -33,8 +33,12 @@ pub struct ClientSection {
     pub client_name: String,
     /// Optional bearer token presented at handshake. Empty means
     /// "anonymous" — works only when the server is configured with
-    /// `require_token = false`.
+    /// `require_token = false`, otherwise the client falls into the
+    /// pairing flow and the resulting token is written to `token_file`.
     pub token: String,
+    /// Path to the file that stores the pairing-issued token between
+    /// runs. Empty disables persistence (in-memory pairing only).
+    pub token_file: String,
     pub theme: Theme,
     pub render_fps: u32,
     pub low_power_mode: bool,
@@ -46,11 +50,20 @@ impl Default for ClientSection {
             server: "ws://127.0.0.1:7077/ws".into(),
             client_name: "vaio-p".into(),
             token: String::new(),
+            token_file: default_token_file(),
             theme: Theme::PhosphorGreen,
             render_fps: 1,
             low_power_mode: true,
         }
     }
+}
+
+fn default_token_file() -> String {
+    std::env::var("XDG_CONFIG_HOME")
+        .ok()
+        .or_else(|| std::env::var("HOME").ok().map(|h| format!("{h}/.config")))
+        .map(|dir| format!("{dir}/ph0sphor/token"))
+        .unwrap_or_default()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

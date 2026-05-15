@@ -9,6 +9,7 @@
 pub mod auth;
 pub mod collectors;
 pub mod config;
+pub mod control;
 pub mod net;
 pub mod state;
 

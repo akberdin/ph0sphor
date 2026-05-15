@@ -33,7 +33,10 @@ async fn client_completes_handshake_and_receives_snapshot() {
     let _client = net::spawn(
         server_url,
         "test-vaio".into(),
-        String::new(), // no token; server is in require_token = false
+        // Non-empty placeholder so the client picks the token-auth flow
+        // rather than pairing. The server runs with require_token=false
+        // in this test, so any value is accepted.
+        "test-handshake".into(),
         tx,
         shutdown.clone(),
     );

@@ -19,6 +19,7 @@ path = "src/lib.rs"
 ph0sphor-core = { workspace = true }
 ph0sphor-protocol = { workspace = true }
 serde = { workspace = true }
+serde_json = { workspace = true }
 tokio = { version = "1", features = [
     "rt-multi-thread",
     "macros",
