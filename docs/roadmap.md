@@ -174,15 +174,29 @@ even when the link is down.
 
 ## Milestone 8 — Packaging and Releases
 
+Goal: a user can download a release, configure the server and run the
+VAIO client.
+
 ```
-[ ] Release builds.
-[ ] Linux server package.
-[ ] Linux i686 client build.
-[ ] Windows server build.
-[ ] macOS server build.
-[ ] Checksums.
-[ ] Example configs.
-[ ] Demo mode.
-[ ] Screenshots.
-[ ] Installation documentation.
+[x] Release builds.
+[x] Linux server package.
+[x] Linux i686 client build.
+[x] Windows server build.
+[x] macOS server build.
+[x] Checksums.
+[x] Example configs.
+[x] Demo mode.
+[x] Screenshots.
+[x] Installation documentation.
 ```
+
+GitHub Actions release workflow
+(`.github/workflows/release.yml`) builds a five-target matrix on every
+`v*.*.*` tag and uploads the artifacts alongside `sha256sum`-style
+companion files. Linux i686 (VAIO client) is cross-built via `cross`.
+Bundled hardened systemd units in `packaging/linux/`, Windows/macOS
+notes in their respective `packaging/<os>/README.md`. The new
+`ph0sphorctl gen-demo` subcommand writes template `mail.json` /
+`weather.json` for the operator-managed ingest paths.
+ASCII screenshots of all six screens live in `docs/screenshots/`.
+End-to-end install + pair walkthrough at `docs/installation.md`.

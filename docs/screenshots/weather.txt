@@ -1,0 +1,18 @@
+PHOSPHOR :: WTHR   2026-05-14  15:42:08
+LINK: ONLINE   HOST: main-pc   UP: 02:34:12   BAT: -73% DSC   NET: wlan0 192.168.1.42
+-------------------------------------------------------------------------------
++- WEATHER ------------------------------------------------------------------+
+| WEATHER — Saint Petersburg                                                |
+|                                                                           |
+|   17.0°C  (feels 15.5°C)                                                  |
+|   cloudy                                                                  |
+|                                                                           |
+|   humidity  72%                                                           |
+|   wind      11 km/h                                                       |
+|                                                                           |
+| FORECAST                                                                  |
+|   Cloudy with a chance of rain                                            |
+|                                                                           |
+|   last update: 15:42:00                                                   |
++----------------------------------------------------------------------------+
+[1]HOME [2]SYS [3]MAIL [4]TIME [5]WTHR [6]LOG   [Tab]next  [C]theme:phosphor-green  [R]refresh  [Q]quit

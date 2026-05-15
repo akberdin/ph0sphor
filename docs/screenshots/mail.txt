@@ -1,0 +1,12 @@
+PHOSPHOR :: MAIL   2026-05-14  15:42:08
+LINK: ONLINE   HOST: main-pc   UP: 02:34:12   BAT: -73% DSC   NET: wlan0 192.168.1.42
+-------------------------------------------------------------------------------
++- MAIL ---------------------------------------------------------------------+
+| UNREAD 3    privacy: sender_subject                                        |
+|                                                                           |
+| RECENT                                                                    |
+|   15:41:30  ops@example.com           Backup completed     [personal]     |
+|   15:31:18  newsletter@phosphor.dev   Weekly digest        [personal]     |
+|   14:55:02  alice@example.com         lunch?               [work]         |
++----------------------------------------------------------------------------+
+[1]HOME [2]SYS [3]MAIL [4]TIME [5]WTHR [6]LOG   [Tab]next  [C]theme:phosphor-green  [R]refresh  [Q]quit

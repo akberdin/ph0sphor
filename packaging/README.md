@@ -1,11 +1,14 @@
 # Packaging
 
-Per-platform packaging assets land here in Milestone 8:
+Per-platform install notes live alongside the bundled assets:
 
-- `linux/` — Debian/Arch/AppImage manifests and a 32-bit (i686) client
-  recipe for the Sony VAIO P.
-- `windows/` — MSI installer config and signing notes.
-- `macos/` — bundle layout, codesign and notarization notes.
+- [`linux/`](linux/README.md) — server, ctl and i686 VAIO client, with
+  hardened systemd units.
+- [`windows/`](windows/README.md) — server + ctl, optional NSSM service
+  recipe.
+- [`macos/`](macos/README.md) — server + ctl, optional launchd agent.
 
-This directory is intentionally a placeholder until the packaging milestone
-begins.
+End-to-end install + pair walkthroughs live in
+[`docs/installation.md`](../docs/installation.md). Release artifacts
+themselves are produced by `.github/workflows/release.yml` on every
+`v*.*.*` tag and uploaded straight to the GitHub release.

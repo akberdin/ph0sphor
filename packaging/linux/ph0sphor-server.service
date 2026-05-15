@@ -1,0 +1,36 @@
+[Unit]
+Description=PHOSPHOR server (telemetry endpoint for the VAIO P client)
+Documentation=https://github.com/akberdin/ph0sphor
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/ph0sphor-server --config /etc/ph0sphor/server.toml
+Restart=on-failure
+RestartSec=2
+
+# Defense in depth — the server only needs read access to /proc and
+# /sys/class for sysinfo, plus its config and token store.
+DynamicUser=yes
+StateDirectory=ph0sphor
+StateDirectoryMode=0700
+ReadWritePaths=/var/lib/ph0sphor
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+NoNewPrivileges=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+
+# README §13.1 budget targets.
+CPUWeight=20
+MemoryMax=128M
+
+[Install]
+WantedBy=multi-user.target

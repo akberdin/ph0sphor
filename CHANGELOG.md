@@ -214,3 +214,35 @@ and this project aspires to follow [Semantic Versioning](https://semver.org/).
     walkthrough, and operational notes.
   - 2 new client unit tests in `local` (smoke-test refresh on any
     host, battery status labels are three chars wide).
+- Packaging and releases (Milestone 8):
+  - `.github/workflows/release.yml`: a five-target matrix release
+    workflow (linux-x86_64, linux-i686, windows-x86_64,
+    macos-x86_64, macos-arm64) that fires on every `v*.*.*` tag.
+    Linux i686 client (the VAIO P target) is cross-built via
+    `cross` against `i686-unknown-linux-musl` so it's static.
+    Server + ctl ride the other targets. Each archive ships
+    `LICENSE`, `README.md`, `SECURITY.md`, every example config
+    and (on Linux) the bundled systemd units; a `.sha256` companion
+    file is generated alongside.
+  - `packaging/linux/ph0sphor-server.service`: hardened systemd unit
+    with `DynamicUser=yes`, `ProtectSystem=strict`,
+    `NoNewPrivileges=yes`, `MemoryMax=128M` and the rest of the
+    standard `Protect*` set. README §13.1 budget enforced from
+    process supervision down.
+  - `packaging/linux/ph0sphor-client@.service`: templated client
+    unit that drops PHOSPHOR onto `/dev/tty1` for the named user
+    and write-restricts to `~/.config/ph0sphor`.
+  - `packaging/{linux,windows,macos}/README.md`: per-platform
+    install recipes. Windows recipe references NSSM; macOS recipe
+    documents the `xattr -d com.apple.quarantine` step and a
+    launchd agent plist.
+  - `ph0sphorctl gen-demo [--dir <path>]`: writes template
+    `mail.json` and `weather.json` for `collectors.mail.source` /
+    `collectors.weather.source` so an operator can wire up a real
+    fetcher without bootstrapping from scratch.
+  - `docs/screenshots/`: ASCII captures of HOME / SYS / MAIL /
+    TIME / WEATHER / LOG. Plain text on purpose — diffs cleanly
+    under git and renders in any monospace font.
+  - `docs/installation.md`: end-to-end "download → install →
+    pair → verify" walkthrough with troubleshooting tips for
+    common failure modes.

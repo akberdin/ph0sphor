@@ -1,0 +1,20 @@
+PHOSPHOR :: TIME   2026-05-14  15:42:08
+LINK: ONLINE   HOST: main-pc   UP: 02:34:12   BAT: -73% DSC   NET: wlan0 192.168.1.42
+-------------------------------------------------------------------------------
++- TIME ---------------------------------------------------------------------+
+| CLOCK                                                                     |
+|   2026-05-14   15:42:08Z                                                  |
+|                                                                           |
+| TIMER                                                                     |
+|   remaining  03:18    [RUNNING]                                           |
+|   preset     05:00 (T toggle, R reset, +/- ±30s)                          |
+|                                                                           |
+| STOPWATCH                                                                 |
+|   elapsed    00:14:27    [PAUSED]                                         |
+|   controls   W toggle, R reset                                            |
+|                                                                           |
+| ALARMS (UTC)                                                              |
+|   07:30                                                                   |
+|   18:00                                                                   |
++----------------------------------------------------------------------------+
+[1]HOME [2]SYS [3]MAIL [4]TIME [5]WTHR [6]LOG   [Tab]next  [C]theme:phosphor-green  [R]refresh  [Q]quit
