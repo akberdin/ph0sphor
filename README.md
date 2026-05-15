@@ -128,6 +128,8 @@ Full reference: [`docs/configuration.md`](docs/configuration.md).
   for a real VAIO P (fonts, autostart, console mode).
 - [`docs/vaio-p-client-vm-testing.md`](docs/vaio-p-client-vm-testing.md)
   — testing the client in a VirtualBox antiX 32-bit VM.
+- [`docs/server-client-testing.md`](docs/server-client-testing.md)
+  — пошаговый тест связки «сервер на Fedora 44 ↔ клиент в ВМ».
 - [`docs/configuration.md`](docs/configuration.md) — every TOML key.
 - [`docs/protocol.md`](docs/protocol.md) — Protobuf schema and framing.
 - [`docs/security-model.md`](docs/security-model.md) — threat model
