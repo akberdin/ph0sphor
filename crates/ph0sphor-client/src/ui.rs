@@ -40,6 +40,9 @@ pub fn draw(frame: &mut Frame, app: &AppState) {
         match app.screen {
             Screen::Home => render_home(frame, chunks[1], app, &palette),
             Screen::Sys => render_sys(frame, chunks[1], app, &palette),
+            Screen::Mail => render_mail(frame, chunks[1], app, &palette),
+            Screen::Time => render_time(frame, chunks[1], app, &palette),
+            Screen::Weather => render_weather(frame, chunks[1], app, &palette),
             Screen::Log => render_log(frame, chunks[1], app, &palette),
         }
     }
@@ -343,6 +346,298 @@ fn render_sys(frame: &mut Frame, area: Rect, app: &AppState, palette: &ThemePale
             )),
     );
     frame.render_widget(body, area);
+}
+
+// ---------------------------------------------------------------------------
+// MAIL (Milestone 6, README §15.7)
+// ---------------------------------------------------------------------------
+
+fn render_mail(frame: &mut Frame, area: Rect, app: &AppState, palette: &ThemePalette) {
+    let title_style = Style::default()
+        .fg(palette.accent)
+        .add_modifier(Modifier::BOLD);
+    let mut lines: Vec<Line> = Vec::new();
+
+    match app.snapshot.mail.as_ref() {
+        None => {
+            lines.push(Line::from(Span::styled(
+                "(mail collector disabled or no data yet)",
+                Style::default().fg(palette.dim),
+            )));
+        }
+        Some(mail) => {
+            lines.push(Line::from(vec![
+                Span::styled("UNREAD ", title_style),
+                Span::styled(
+                    format!("{}", mail.unread_count),
+                    Style::default()
+                        .fg(if mail.unread_count > 0 {
+                            palette.warning
+                        } else {
+                            palette.fg
+                        })
+                        .add_modifier(Modifier::BOLD),
+                ),
+                Span::styled(
+                    format!("    privacy: {}", privacy_label(mail.privacy)),
+                    Style::default().fg(palette.dim),
+                ),
+            ]));
+            lines.push(Line::raw(""));
+
+            if mail.recent.is_empty() {
+                lines.push(Line::from(Span::styled(
+                    "  (no recent items)",
+                    Style::default().fg(palette.dim),
+                )));
+            } else {
+                lines.push(Line::from(Span::styled("RECENT", title_style)));
+                for item in &mail.recent {
+                    let time = format_hms(item.timestamp_unix_ms);
+                    let mut spans = vec![Span::styled(
+                        format!("  {time}  "),
+                        Style::default().fg(palette.dim),
+                    )];
+                    if item.sender.is_empty() && item.subject.is_empty() {
+                        spans.push(Span::styled(
+                            "(metadata hidden by privacy policy)",
+                            Style::default().fg(palette.dim),
+                        ));
+                    } else {
+                        spans.push(Span::styled(
+                            format!("{}  ", item.sender),
+                            Style::default().fg(palette.accent),
+                        ));
+                        spans.push(Span::styled(
+                            item.subject.clone(),
+                            Style::default().fg(palette.fg),
+                        ));
+                    }
+                    if !item.account.is_empty() {
+                        spans.push(Span::styled(
+                            format!("  [{}]", item.account),
+                            Style::default().fg(palette.dim),
+                        ));
+                    }
+                    lines.push(Line::from(spans));
+                    if !item.preview.is_empty() {
+                        lines.push(Line::from(Span::styled(
+                            format!("      {}", item.preview),
+                            Style::default().fg(palette.dim),
+                        )));
+                    }
+                }
+            }
+        }
+    }
+
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(palette.dim))
+        .title(Span::styled(" MAIL ", title_style));
+    frame.render_widget(Paragraph::new(lines).block(block), area);
+}
+
+fn privacy_label(p: ph0sphor_core::MailPrivacy) -> &'static str {
+    match p {
+        ph0sphor_core::MailPrivacy::CountOnly => "count_only",
+        ph0sphor_core::MailPrivacy::SenderSubject => "sender_subject",
+        ph0sphor_core::MailPrivacy::Preview => "preview",
+    }
+}
+
+// ---------------------------------------------------------------------------
+// TIME (Milestone 6, README §15.8)
+// ---------------------------------------------------------------------------
+
+fn render_time(frame: &mut Frame, area: Rect, app: &AppState, palette: &ThemePalette) {
+    let title_style = Style::default()
+        .fg(palette.accent)
+        .add_modifier(Modifier::BOLD);
+
+    let (date, time) = format_clock_now();
+    let timer_remaining = app.time.timer_remaining();
+    let timer_state = if app.time.timer_running() {
+        "RUNNING"
+    } else if app.time.timer_elapsed() == std::time::Duration::ZERO {
+        "READY"
+    } else {
+        "PAUSED"
+    };
+    let stopwatch_state = if app.time.stopwatch_running() {
+        "RUNNING"
+    } else if app.time.stopwatch_elapsed() == std::time::Duration::ZERO {
+        "READY"
+    } else {
+        "PAUSED"
+    };
+
+    let mut lines: Vec<Line> = Vec::new();
+    lines.push(Line::from(Span::styled("CLOCK", title_style)));
+    lines.push(Line::from(Span::styled(
+        format!("  {date}   {time}"),
+        Style::default().fg(palette.fg),
+    )));
+    lines.push(Line::raw(""));
+
+    lines.push(Line::from(Span::styled("TIMER", title_style)));
+    lines.push(Line::from(vec![
+        Span::styled(
+            format!("  remaining  {}", format_duration(timer_remaining)),
+            Style::default().fg(palette.fg),
+        ),
+        Span::styled(
+            format!("    [{timer_state}]"),
+            Style::default().fg(palette.dim),
+        ),
+    ]));
+    lines.push(Line::from(Span::styled(
+        format!(
+            "  preset     {} (T toggle, R reset, +/- ±30s)",
+            format_duration(app.time.timer_preset)
+        ),
+        Style::default().fg(palette.dim),
+    )));
+    lines.push(Line::raw(""));
+
+    lines.push(Line::from(Span::styled("STOPWATCH", title_style)));
+    lines.push(Line::from(vec![
+        Span::styled(
+            format!(
+                "  elapsed    {}",
+                format_duration(app.time.stopwatch_elapsed())
+            ),
+            Style::default().fg(palette.fg),
+        ),
+        Span::styled(
+            format!("    [{stopwatch_state}]"),
+            Style::default().fg(palette.dim),
+        ),
+    ]));
+    lines.push(Line::from(Span::styled(
+        "  controls   W toggle, R reset",
+        Style::default().fg(palette.dim),
+    )));
+    lines.push(Line::raw(""));
+
+    lines.push(Line::from(Span::styled("ALARMS (UTC)", title_style)));
+    if app.time.alarms.is_empty() {
+        lines.push(Line::from(Span::styled(
+            "  (no alarms configured — set [time].alarms in config)",
+            Style::default().fg(palette.dim),
+        )));
+    } else {
+        for m in &app.time.alarms {
+            let h = m / 60;
+            let mm = m % 60;
+            lines.push(Line::from(Span::styled(
+                format!("  {h:02}:{mm:02}"),
+                Style::default().fg(palette.fg),
+            )));
+        }
+    }
+
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(palette.dim))
+        .title(Span::styled(" TIME ", title_style));
+    frame.render_widget(Paragraph::new(lines).block(block), area);
+}
+
+fn format_duration(d: std::time::Duration) -> String {
+    let total = d.as_secs();
+    let h = total / 3600;
+    let m = (total % 3600) / 60;
+    let s = total % 60;
+    if h > 0 {
+        format!("{h:02}:{m:02}:{s:02}")
+    } else {
+        format!("{m:02}:{s:02}")
+    }
+}
+
+// ---------------------------------------------------------------------------
+// WEATHER (Milestone 6, README §15.9)
+// ---------------------------------------------------------------------------
+
+fn render_weather(frame: &mut Frame, area: Rect, app: &AppState, palette: &ThemePalette) {
+    let title_style = Style::default()
+        .fg(palette.accent)
+        .add_modifier(Modifier::BOLD);
+    let mut lines: Vec<Line> = Vec::new();
+
+    match app.snapshot.weather.as_ref() {
+        None => {
+            lines.push(Line::from(Span::styled(
+                "(weather collector disabled or no data yet)",
+                Style::default().fg(palette.dim),
+            )));
+        }
+        Some(w) => {
+            lines.push(Line::from(Span::styled(
+                if w.location.is_empty() {
+                    "WEATHER".to_string()
+                } else {
+                    format!("WEATHER — {}", w.location)
+                },
+                title_style,
+            )));
+            lines.push(Line::raw(""));
+            lines.push(Line::from(vec![
+                Span::styled("  ", Style::default().fg(palette.fg)),
+                Span::styled(
+                    format!("{:.1}°C", w.temperature_c),
+                    Style::default()
+                        .fg(palette.accent)
+                        .add_modifier(Modifier::BOLD),
+                ),
+                Span::styled(
+                    if let Some(f) = w.feels_like_c {
+                        format!("  (feels {f:.1}°C)")
+                    } else {
+                        String::new()
+                    },
+                    Style::default().fg(palette.dim),
+                ),
+            ]));
+            lines.push(Line::from(Span::styled(
+                format!("  {}", w.condition),
+                Style::default().fg(palette.fg),
+            )));
+            lines.push(Line::raw(""));
+            if let Some(h) = w.humidity_percent {
+                lines.push(Line::from(Span::styled(
+                    format!("  humidity  {h:.0}%"),
+                    Style::default().fg(palette.fg),
+                )));
+            }
+            if let Some(wind) = w.wind_kph {
+                lines.push(Line::from(Span::styled(
+                    format!("  wind      {wind:.0} km/h"),
+                    Style::default().fg(palette.fg),
+                )));
+            }
+            if !w.short_forecast.is_empty() {
+                lines.push(Line::raw(""));
+                lines.push(Line::from(Span::styled("FORECAST", title_style)));
+                lines.push(Line::from(Span::styled(
+                    format!("  {}", w.short_forecast),
+                    Style::default().fg(palette.fg),
+                )));
+            }
+            lines.push(Line::raw(""));
+            lines.push(Line::from(Span::styled(
+                format!("  last update: {}", format_hms(w.last_update_unix_ms)),
+                Style::default().fg(palette.dim),
+            )));
+        }
+    }
+
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(palette.dim))
+        .title(Span::styled(" WEATHER ", title_style));
+    frame.render_widget(Paragraph::new(lines).block(block), area);
 }
 
 // ---------------------------------------------------------------------------

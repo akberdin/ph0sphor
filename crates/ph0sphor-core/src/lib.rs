@@ -14,6 +14,9 @@ pub mod version;
 
 pub use error::CoreError;
 pub use event::{Event, EventKind, Severity};
-pub use metric::{CpuMetrics, DiskMetrics, MemoryMetrics, NetworkMetrics, Snapshot};
+pub use metric::{
+    CpuMetrics, DiskMetrics, MailItem, MailPrivacy, MailSummary, MemoryMetrics, NetworkMetrics,
+    Snapshot, WeatherInfo,
+};
 pub use theme::Theme;
 pub use version::{APP_VERSION, PROTOCOL_VERSION};

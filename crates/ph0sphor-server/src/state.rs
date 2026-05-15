@@ -4,7 +4,9 @@
 //! write partial updates; per-client tasks read full snapshots and stream
 //! them out. A `tokio::sync::watch` channel notifies subscribers on change.
 
-use ph0sphor_core::{CpuMetrics, DiskMetrics, MemoryMetrics, NetworkMetrics, Snapshot};
+use ph0sphor_core::{
+    CpuMetrics, DiskMetrics, MailSummary, MemoryMetrics, NetworkMetrics, Snapshot, WeatherInfo,
+};
 use std::sync::{Arc, RwLock};
 use std::time::SystemTime;
 use tokio::sync::watch;
@@ -63,6 +65,14 @@ impl State {
 
     pub fn update_uptime(&self, uptime_secs: u64) {
         self.update(|s| s.uptime_secs = uptime_secs);
+    }
+
+    pub fn update_mail(&self, mail: MailSummary) {
+        self.update(|s| s.mail = Some(mail));
+    }
+
+    pub fn update_weather(&self, weather: WeatherInfo) {
+        self.update(|s| s.weather = Some(weather));
     }
 
     fn update<F: FnOnce(&mut Snapshot)>(&self, f: F) {

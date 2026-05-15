@@ -26,12 +26,7 @@ pub const CPU_TEMP_EPSILON: f32 = 0.5;
 pub fn compute_delta(prev: &wire::FullSnapshot, cur: &wire::FullSnapshot) -> wire::DeltaUpdate {
     let mut d = wire::DeltaUpdate {
         timestamp_unix_ms: cur.timestamp_unix_ms,
-        cpu_usage_percent: None,
-        cpu_temperature_c: None,
-        memory_used_bytes: None,
-        memory_total_bytes: None,
-        disks: vec![],
-        network: vec![],
+        ..Default::default()
     };
 
     match (prev.cpu.as_ref(), cur.cpu.as_ref()) {
@@ -73,6 +68,15 @@ pub fn compute_delta(prev: &wire::FullSnapshot, cur: &wire::FullSnapshot) -> wir
         d.network = cur.network.clone();
     }
 
+    // Useful-features payloads (M6). Compared with structural equality;
+    // any change resends the whole sub-message.
+    if prev.mail != cur.mail {
+        d.mail = cur.mail.clone();
+    }
+    if prev.weather != cur.weather {
+        d.weather = cur.weather.clone();
+    }
+
     d
 }
 
@@ -85,6 +89,8 @@ pub fn is_empty(d: &wire::DeltaUpdate) -> bool {
         && d.memory_total_bytes.is_none()
         && d.disks.is_empty()
         && d.network.is_empty()
+        && d.mail.is_none()
+        && d.weather.is_none()
 }
 
 /// Apply a delta to a domain [`Snapshot`]. Fields not mentioned by the
@@ -110,6 +116,12 @@ pub fn apply_delta(snap: &mut Snapshot, delta: &wire::DeltaUpdate) {
     }
     if !delta.network.is_empty() {
         snap.network = delta.network.iter().map(Into::into).collect();
+    }
+    if let Some(m) = delta.mail.as_ref() {
+        snap.mail = Some(m.into());
+    }
+    if let Some(w) = delta.weather.as_ref() {
+        snap.weather = Some(w.into());
     }
 }
 

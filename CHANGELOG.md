@@ -160,3 +160,32 @@ and this project aspires to follow [Semantic Versioning](https://semver.org/).
     test (loopback POST → token issued), 1 new client integration test
     `client_pairs_then_receives_token_and_snapshot` exercising the
     full server + WS + control + client flow.
+- Useful features (Milestone 6):
+  - Wire schema gains `MailSummary` / `MailItem` / `WeatherInfo` and a
+    `MailPrivacy` enum. Carried by both `FullSnapshot` and
+    `DeltaUpdate` (optional message types). Domain types added to
+    `ph0sphor-core` with `PartialEq`.
+  - `compute_delta` and `apply_delta` now ferry mail/weather changes;
+    `is_empty` recognises the new fields too.
+  - Server: file-based ingest collectors `run_mail` and `run_weather`
+    that read operator-managed JSON files (`collectors.mail.source`,
+    `collectors.weather.source`). Mail privacy is enforced server-side
+    with `count_only` / `sender_subject` / `preview` stripping fields
+    before they reach the wire (README §14.5). Demo collector seeds
+    plausible mail and weather data for `--demo` / screenshots.
+  - Client: `Screen` enum extended to six (Home/Sys/Mail/Time/Weather/
+    Log) with digit keys 1-6; status bar tabs all visible.
+  - `TimeState` provides local timer (T toggle, R reset, +/- adjust),
+    stopwatch (W toggle, R reset) and HH:MM UTC alarms loaded from
+    `[time].alarms`. Timer completion logs `TIMER: completed`; alarms
+    log `ALARM: HH:MM UTC` at Critical severity (unless muted).
+  - Client-side new-mail detector compares each incoming snapshot
+    against the last seen `unread_count`; first snapshot only seeds
+    the baseline so the user doesn't see a phantom flood at startup.
+  - New TUI screens `render_mail`, `render_time`, `render_weather`
+    with privacy-aware mail rendering and a phosphor-style time card.
+  - `examples/server.toml` and `examples/client.toml` updated;
+    `docs/configuration.md` documents the JSON schemas the operator
+    populates for mail and weather.
+  - 4 new client unit tests (six-screen navigation, timer toggles,
+    `parse_hhmm_to_minute_of_day`, new-mail detector seeding).

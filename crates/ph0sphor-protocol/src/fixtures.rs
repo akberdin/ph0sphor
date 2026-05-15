@@ -7,7 +7,8 @@
 
 use crate::wire;
 use ph0sphor_core::{
-    CpuMetrics, DiskMetrics, MemoryMetrics, NetworkMetrics, Snapshot, PROTOCOL_VERSION,
+    CpuMetrics, DiskMetrics, MailItem, MailPrivacy, MailSummary, MemoryMetrics, NetworkMetrics,
+    Snapshot, WeatherInfo, PROTOCOL_VERSION,
 };
 
 /// A non-trivial telemetry snapshot meant to exercise every field that
@@ -50,6 +51,28 @@ pub fn sample_domain_snapshot() -> Snapshot {
             rx_total_bytes: Some(9_876_543_210),
             tx_total_bytes: Some(1_234_567_890),
         }],
+        mail: Some(MailSummary {
+            unread_count: 3,
+            privacy: MailPrivacy::SenderSubject,
+            recent: vec![MailItem {
+                sender: "ops@example.com".into(),
+                subject: "Backup completed".into(),
+                preview: String::new(),
+                timestamp_unix_ms: 1_715_699_500_000,
+                account: "personal".into(),
+            }],
+            last_update_unix_ms: 1_715_700_000_000,
+        }),
+        weather: Some(WeatherInfo {
+            temperature_c: 17.0,
+            feels_like_c: Some(15.5),
+            condition: "cloudy".into(),
+            humidity_percent: Some(72.0),
+            wind_kph: Some(11.0),
+            short_forecast: "Cloudy with a chance of rain".into(),
+            last_update_unix_ms: 1_715_700_000_000,
+            location: "Saint Petersburg".into(),
+        }),
     }
 }
 
@@ -64,10 +87,7 @@ pub fn sample_delta_update() -> wire::DeltaUpdate {
         timestamp_unix_ms: 1_715_700_001_000,
         cpu_usage_percent: Some(63.1),
         cpu_temperature_c: Some(62.5),
-        memory_used_bytes: None,
-        memory_total_bytes: None,
-        disks: vec![],
-        network: vec![],
+        ..Default::default()
     }
 }
 

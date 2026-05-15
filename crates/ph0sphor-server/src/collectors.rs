@@ -12,16 +12,20 @@
 //! The demo collector exists for `--demo` and integration tests; it
 //! produces plausible synthetic telemetry without touching the host.
 
-use crate::config::CollectorsSection;
+use crate::config::{CollectorsSection, MailCollectorSection, WeatherCollectorSection};
 use crate::state::State;
-use ph0sphor_core::{CpuMetrics, DiskMetrics, MemoryMetrics, NetworkMetrics};
+use ph0sphor_core::{
+    CpuMetrics, DiskMetrics, MailItem, MailPrivacy, MailSummary, MemoryMetrics, NetworkMetrics,
+    WeatherInfo,
+};
+use serde::Deserialize;
 use std::sync::Arc;
 use std::time::Duration;
 use sysinfo::{CpuRefreshKind, Disks, MemoryRefreshKind, Networks, RefreshKind, System};
 use tokio::sync::Notify;
 use tokio::task::JoinHandle;
 use tokio::time::MissedTickBehavior;
-use tracing::{info, warn};
+use tracing::{debug, info, warn};
 
 /// Handle returned from [`spawn_real`] / [`spawn_demo`] so callers can
 /// stop collectors during shutdown and wait for them to drain.
@@ -75,6 +79,20 @@ pub fn spawn_real(state: State, cfg: &CollectorsSection) -> Collectors {
         handles.push(tokio::spawn(run_network(
             state.clone(),
             cfg.network.interval(),
+            shutdown.clone(),
+        )));
+    }
+    if cfg.mail.enabled {
+        handles.push(tokio::spawn(run_mail(
+            state.clone(),
+            cfg.mail.clone(),
+            shutdown.clone(),
+        )));
+    }
+    if cfg.weather.enabled {
+        handles.push(tokio::spawn(run_weather(
+            state.clone(),
+            cfg.weather.clone(),
             shutdown.clone(),
         )));
     }
@@ -244,6 +262,227 @@ async fn run_uptime(state: State, shutdown: Arc<Notify>) {
 }
 
 // ---------------------------------------------------------------------------
+// Mail
+// ---------------------------------------------------------------------------
+
+/// JSON shape the operator writes to the file referenced by
+/// `collectors.mail.source`. Sender/subject/preview are filtered
+/// according to the configured privacy mode before reaching the wire.
+#[derive(Debug, Default, Deserialize)]
+struct MailFile {
+    #[serde(default)]
+    unread_count: u32,
+    #[serde(default)]
+    recent: Vec<MailItemFile>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+struct MailItemFile {
+    #[serde(default)]
+    sender: String,
+    #[serde(default)]
+    subject: String,
+    #[serde(default)]
+    preview: String,
+    #[serde(default)]
+    timestamp_unix_ms: u64,
+    #[serde(default)]
+    account: String,
+}
+
+async fn run_mail(state: State, cfg: MailCollectorSection, shutdown: Arc<Notify>) {
+    let interval = Duration::from_secs(cfg.interval_sec.max(10));
+    let privacy = parse_privacy(&cfg.privacy);
+    let source = cfg.source.clone();
+
+    let mut ticker = tokio::time::interval(interval);
+    ticker.set_missed_tick_behavior(MissedTickBehavior::Skip);
+
+    loop {
+        tokio::select! {
+            _ = shutdown.notified() => break,
+            _ = ticker.tick() => {
+                let summary = read_mail_file(source.as_deref(), privacy);
+                state.update_mail(summary);
+            }
+        }
+    }
+}
+
+fn read_mail_file(path: Option<&str>, privacy: MailPrivacy) -> MailSummary {
+    let now_ms = now_unix_ms();
+    let Some(path) = path else {
+        return MailSummary {
+            unread_count: 0,
+            privacy,
+            recent: vec![],
+            last_update_unix_ms: now_ms,
+        };
+    };
+    let raw = match std::fs::read_to_string(path) {
+        Ok(s) => s,
+        Err(e) => {
+            debug!(path = %path, error = %e, "mail source missing or unreadable");
+            return MailSummary {
+                unread_count: 0,
+                privacy,
+                recent: vec![],
+                last_update_unix_ms: now_ms,
+            };
+        }
+    };
+    let parsed: MailFile = match serde_json::from_str(&raw) {
+        Ok(p) => p,
+        Err(e) => {
+            warn!(path = %path, error = %e, "mail source is not valid JSON");
+            return MailSummary {
+                unread_count: 0,
+                privacy,
+                recent: vec![],
+                last_update_unix_ms: now_ms,
+            };
+        }
+    };
+    MailSummary {
+        unread_count: parsed.unread_count,
+        privacy,
+        recent: parsed
+            .recent
+            .into_iter()
+            .map(|m| apply_privacy(privacy, m))
+            .collect(),
+        last_update_unix_ms: now_ms,
+    }
+}
+
+fn apply_privacy(privacy: MailPrivacy, m: MailItemFile) -> MailItem {
+    match privacy {
+        MailPrivacy::CountOnly => MailItem {
+            sender: String::new(),
+            subject: String::new(),
+            preview: String::new(),
+            timestamp_unix_ms: m.timestamp_unix_ms,
+            account: m.account,
+        },
+        MailPrivacy::SenderSubject => MailItem {
+            sender: m.sender,
+            subject: m.subject,
+            preview: String::new(),
+            timestamp_unix_ms: m.timestamp_unix_ms,
+            account: m.account,
+        },
+        MailPrivacy::Preview => {
+            // Cap preview length so a noisy provider can't blow the
+            // per-item budget. 240 bytes is generous for a phosphor TUI.
+            let preview: String = m.preview.chars().take(240).collect();
+            MailItem {
+                sender: m.sender,
+                subject: m.subject,
+                preview,
+                timestamp_unix_ms: m.timestamp_unix_ms,
+                account: m.account,
+            }
+        }
+    }
+}
+
+fn parse_privacy(s: &str) -> MailPrivacy {
+    match s {
+        "preview" => MailPrivacy::Preview,
+        "sender_subject" => MailPrivacy::SenderSubject,
+        _ => MailPrivacy::CountOnly,
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Weather
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Default, Deserialize)]
+struct WeatherFile {
+    #[serde(default)]
+    temperature_c: f32,
+    #[serde(default)]
+    feels_like_c: Option<f32>,
+    #[serde(default)]
+    condition: String,
+    #[serde(default)]
+    humidity_percent: Option<f32>,
+    #[serde(default)]
+    wind_kph: Option<f32>,
+    #[serde(default)]
+    short_forecast: String,
+    #[serde(default)]
+    location: String,
+}
+
+async fn run_weather(state: State, cfg: WeatherCollectorSection, shutdown: Arc<Notify>) {
+    let interval = Duration::from_secs(cfg.interval_sec.max(60));
+    let source = cfg.source.clone();
+
+    let mut ticker = tokio::time::interval(interval);
+    ticker.set_missed_tick_behavior(MissedTickBehavior::Skip);
+
+    loop {
+        tokio::select! {
+            _ = shutdown.notified() => break,
+            _ = ticker.tick() => {
+                let info = read_weather_file(source.as_deref());
+                state.update_weather(info);
+            }
+        }
+    }
+}
+
+fn read_weather_file(path: Option<&str>) -> WeatherInfo {
+    let now_ms = now_unix_ms();
+    let Some(path) = path else {
+        return WeatherInfo {
+            last_update_unix_ms: now_ms,
+            ..WeatherInfo::default()
+        };
+    };
+    let raw = match std::fs::read_to_string(path) {
+        Ok(s) => s,
+        Err(e) => {
+            debug!(path = %path, error = %e, "weather source missing or unreadable");
+            return WeatherInfo {
+                last_update_unix_ms: now_ms,
+                ..WeatherInfo::default()
+            };
+        }
+    };
+    let parsed: WeatherFile = match serde_json::from_str(&raw) {
+        Ok(p) => p,
+        Err(e) => {
+            warn!(path = %path, error = %e, "weather source is not valid JSON");
+            return WeatherInfo {
+                last_update_unix_ms: now_ms,
+                ..WeatherInfo::default()
+            };
+        }
+    };
+    WeatherInfo {
+        temperature_c: parsed.temperature_c,
+        feels_like_c: parsed.feels_like_c,
+        condition: parsed.condition,
+        humidity_percent: parsed.humidity_percent,
+        wind_kph: parsed.wind_kph,
+        short_forecast: parsed.short_forecast,
+        last_update_unix_ms: now_ms,
+        location: parsed.location,
+    }
+}
+
+fn now_unix_ms() -> u64 {
+    use std::time::SystemTime;
+    SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0)
+}
+
+// ---------------------------------------------------------------------------
 // Demo collector
 // ---------------------------------------------------------------------------
 
@@ -313,4 +552,35 @@ fn seed_demo_state(state: &State) {
         tx_total_bytes: Some(0),
     }]);
     state.update_uptime(60);
+    state.update_mail(MailSummary {
+        unread_count: 3,
+        privacy: MailPrivacy::SenderSubject,
+        recent: vec![
+            MailItem {
+                sender: "ops@example.com".into(),
+                subject: "Backup completed".into(),
+                preview: String::new(),
+                timestamp_unix_ms: now_unix_ms() - 90_000,
+                account: "personal".into(),
+            },
+            MailItem {
+                sender: "newsletter@phosphor.dev".into(),
+                subject: "Weekly digest".into(),
+                preview: String::new(),
+                timestamp_unix_ms: now_unix_ms() - 600_000,
+                account: "personal".into(),
+            },
+        ],
+        last_update_unix_ms: now_unix_ms(),
+    });
+    state.update_weather(WeatherInfo {
+        temperature_c: 17.0,
+        feels_like_c: Some(15.5),
+        condition: "cloudy".into(),
+        humidity_percent: Some(72.0),
+        wind_kph: Some(11.0),
+        short_forecast: "Cloudy with a chance of rain".into(),
+        last_update_unix_ms: now_unix_ms(),
+        location: "demo".into(),
+    });
 }

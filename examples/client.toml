@@ -30,3 +30,11 @@ theme_cycle = "C"
 mute = "M"
 refresh = "R"
 quit = "Q"
+
+[time]
+# Default countdown timer length in seconds. Adjustable at runtime
+# via +/- on the TIME screen.
+timer_default_secs = 300
+# Daily alarms in HH:MM (UTC). Each fires once per day at the matching
+# minute and lands in the event log at Critical severity unless muted.
+alarms = []

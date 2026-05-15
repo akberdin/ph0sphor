@@ -85,6 +85,11 @@ message FullSnapshot {
   MemoryMetrics memory = 6;
   repeated DiskMetrics disks = 7;
   repeated NetworkMetrics network = 8;
+
+  // Useful-features payloads (Milestone 6). Optional so old clients
+  // ignore them safely.
+  optional MailSummary mail = 9;
+  optional WeatherInfo weather = 10;
 }
 
 // DeltaUpdate carries only fields that changed since the last snapshot or
@@ -103,6 +108,11 @@ message DeltaUpdate {
   // Repeated fields replace the previous value entirely when present.
   repeated DiskMetrics disks = 30;
   repeated NetworkMetrics network = 31;
+
+  // Useful-features payloads (Milestone 6). Optional message types are
+  // generated as Option<T> by prost; presence means "replace entirely".
+  optional MailSummary mail = 40;
+  optional WeatherInfo weather = 41;
 }
 
 message CpuMetrics {
@@ -131,6 +141,56 @@ message NetworkMetrics {
   uint64 tx_bytes_per_sec = 3;
   optional uint64 rx_total_bytes = 4;
   optional uint64 tx_total_bytes = 5;
+}
+
+// ============================================================================
+// Mail (Milestone 6, README §15.7 + §14.5)
+// ============================================================================
+
+// Mirrors README §14.5 — what the server is permitted to put on the wire.
+enum MailPrivacy {
+  MAIL_PRIVACY_UNSPECIFIED = 0;
+  MAIL_PRIVACY_COUNT_ONLY = 1;
+  MAIL_PRIVACY_SENDER_SUBJECT = 2;
+  MAIL_PRIVACY_PREVIEW = 3;
+}
+
+message MailSummary {
+  uint32 unread_count = 1;
+  MailPrivacy privacy = 2;
+  // Most-recent items first. Length is bounded server-side; clients
+  // must not assume a maximum length.
+  repeated MailItem recent = 3;
+  uint64 last_update_unix_ms = 4;
+}
+
+message MailItem {
+  // Empty when privacy is COUNT_ONLY.
+  string sender = 1;
+  // Empty when privacy is COUNT_ONLY.
+  string subject = 2;
+  // Non-empty only when privacy is PREVIEW. Server-side trimmed to a
+  // few hundred bytes so it always fits the per-item budget.
+  string preview = 3;
+  uint64 timestamp_unix_ms = 4;
+  // Optional account label so a multi-account user can route visually.
+  string account = 5;
+}
+
+// ============================================================================
+// Weather (Milestone 6, README §15.9)
+// ============================================================================
+
+message WeatherInfo {
+  float temperature_c = 1;
+  optional float feels_like_c = 2;
+  // Free-form short condition string, e.g. "cloudy", "thunderstorm".
+  string condition = 3;
+  optional float humidity_percent = 4;
+  optional float wind_kph = 5;
+  string short_forecast = 6;
+  uint64 last_update_unix_ms = 7;
+  string location = 8;
 }
 
 // ============================================================================

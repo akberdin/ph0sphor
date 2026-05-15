@@ -52,8 +52,15 @@ interval_sec = 3
 [collectors.mail]
 enabled = false
 interval_sec = 120
+# `count_only` | `sender_subject` | `preview`. README §14.5.
 privacy = "sender_subject"
+# Optional: path to a JSON file the operator updates externally. The
+# expected schema is documented in docs/configuration.md. When omitted,
+# the collector reports zero unread messages.
+# source = "/var/lib/ph0sphor/mail.json"
 
 [collectors.weather]
 enabled = false
 interval_sec = 1800
+# Optional: path to a JSON file the operator updates externally.
+# source = "/var/lib/ph0sphor/weather.json"

@@ -119,6 +119,8 @@ pub struct CollectorsSection {
     pub memory: PeriodicCollector,
     pub network: PeriodicCollector,
     pub disk: PeriodicCollector,
+    pub mail: MailCollectorSection,
+    pub weather: WeatherCollectorSection,
 }
 
 impl Default for CollectorsSection {
@@ -128,6 +130,58 @@ impl Default for CollectorsSection {
             memory: PeriodicCollector::ms(1000),
             network: PeriodicCollector::ms(1000),
             disk: PeriodicCollector::ms(15_000),
+            mail: MailCollectorSection::default(),
+            weather: WeatherCollectorSection::default(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct MailCollectorSection {
+    pub enabled: bool,
+    /// Polling interval in seconds. Defaults to 120 s, matching
+    /// `examples/server.toml`. Mail providers should never be polled
+    /// faster than necessary (README §12).
+    #[serde(alias = "interval_ms")]
+    pub interval_sec: u64,
+    /// One of `count_only` | `sender_subject` | `preview`. The default
+    /// is the conservative `sender_subject` from README §14.5.
+    pub privacy: String,
+    /// Optional path to a JSON file the operator updates externally.
+    /// The schema is documented in `docs/configuration.md`.
+    pub source: Option<String>,
+}
+
+impl Default for MailCollectorSection {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            interval_sec: 120,
+            privacy: "sender_subject".to_string(),
+            source: None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct WeatherCollectorSection {
+    pub enabled: bool,
+    /// Polling interval in seconds. Defaults to 30 minutes, matching
+    /// the README and weather providers' rate-limiting reality.
+    #[serde(alias = "interval_ms")]
+    pub interval_sec: u64,
+    /// Optional path to a JSON file the operator updates externally.
+    pub source: Option<String>,
+}
+
+impl Default for WeatherCollectorSection {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            interval_sec: 1800,
+            source: None,
         }
     }
 }

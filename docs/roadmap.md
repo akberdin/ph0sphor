@@ -127,13 +127,26 @@ loopback control endpoint.
 
 ## Milestone 6 — Useful Features
 
+Goal: PHOSPHOR is useful even when the user is not actively debugging
+the workstation.
+
 ```
-[ ] MAIL screen and unread count.
-[ ] Mail privacy modes.
-[ ] WEATHER screen.
-[ ] TIME screen with local timer/stopwatch/alarm.
-[ ] Richer event log.
+[x] MAIL screen and unread count.
+[x] Mail privacy modes.
+[x] WEATHER screen.
+[x] TIME screen with local timer/stopwatch/alarm.
+[x] Richer event log.
 ```
+
+Wire schema: `MailSummary` / `MailItem` / `WeatherInfo` plus a
+`MailPrivacy` enum land in proto and are carried by both
+`FullSnapshot` and `DeltaUpdate`. Server collectors ingest
+operator-managed JSON files (`collectors.mail.source`,
+`collectors.weather.source`) and apply the configured privacy mode
+before anything reaches the wire. Client gains MAIL / TIME / WEATHER
+screens, a local `TimeState` with timer/stopwatch/alarms, and a
+client-side new-mail detector that pushes a Warn-level entry into the
+event log on every count increase.
 
 ## Milestone 7 — VAIO P Polish
 

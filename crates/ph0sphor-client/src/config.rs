@@ -24,6 +24,29 @@ pub struct ClientConfig {
     pub ui: UiSection,
     pub cache: CacheSection,
     pub keys: KeysSection,
+    pub time: TimeSection,
+}
+
+/// Local-only time-domain features for the TIME screen. Per
+/// README §15.8, these must work even when the link is offline.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct TimeSection {
+    /// Default countdown (seconds) for the timer. Adjustable at runtime
+    /// with `+` / `-` on the TIME screen.
+    pub timer_default_secs: u64,
+    /// Alarm targets in `"HH:MM"` UTC. Each entry fires once per day
+    /// at its minute boundary.
+    pub alarms: Vec<String>,
+}
+
+impl Default for TimeSection {
+    fn default() -> Self {
+        Self {
+            timer_default_secs: 5 * 60,
+            alarms: Vec::new(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
