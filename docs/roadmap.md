@@ -182,7 +182,6 @@ VAIO client.
 [x] Linux server package.
 [x] Linux i686 client build.
 [x] Windows server build.
-[x] macOS server build.
 [x] Checksums.
 [x] Example configs.
 [x] Demo mode.
@@ -191,11 +190,12 @@ VAIO client.
 ```
 
 GitHub Actions release workflow
-(`.github/workflows/release.yml`) builds a five-target matrix on every
-`v*.*.*` tag and uploads the artifacts alongside `sha256sum`-style
-companion files. Linux i686 (VAIO client) is cross-built via `cross`.
-Bundled hardened systemd units in `packaging/linux/`, Windows/macOS
-notes in their respective `packaging/<os>/README.md`. The new
+(`.github/workflows/release.yml`) builds a three-target matrix on
+every `v*.*.*` tag (linux-x86_64, linux-i686, windows-x86_64) and
+uploads the artifacts alongside `sha256sum`-style companion files.
+Linux i686 (VAIO client) is cross-built via `cross`. Bundled hardened
+systemd units in `packaging/linux/`, Windows notes in
+`packaging/windows/README.md`. The new
 `ph0sphorctl gen-demo` subcommand writes template `mail.json` /
 `weather.json` for the operator-managed ingest paths.
 ASCII screenshots of all six screens live in `docs/screenshots/`.

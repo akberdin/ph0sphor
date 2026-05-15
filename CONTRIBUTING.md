@@ -24,7 +24,7 @@ Requirements:
 
 - Rust (stable). The version pinned in `rust-toolchain.toml` is the source of
   truth.
-- A Linux, macOS or Windows host. For the client, a low-power Linux machine
+- A Linux or Windows host. For the client, a low-power Linux machine
   (ideally a Sony VAIO P) is the canonical target.
 
 Build everything:

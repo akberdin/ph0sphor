@@ -6,7 +6,6 @@ Per-platform install notes live alongside the bundled assets:
   hardened systemd units.
 - [`windows/`](windows/README.md) — server + ctl, optional NSSM service
   recipe.
-- [`macos/`](macos/README.md) — server + ctl, optional launchd agent.
 
 End-to-end install + pair walkthroughs live in
 [`docs/installation.md`](../docs/installation.md). Release artifacts

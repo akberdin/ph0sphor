@@ -31,7 +31,7 @@ The default security mode is read-only.
 | ------------------- | --------------------------------------------------------------------- |
 | Client target       | Sony VAIO VGN-P (Intel Atom Z5xx, 1–2 GB RAM, 1600×768 8" panel)      |
 | Client OS           | 32-bit Linux (Alpine i686, Debian i386, antiX 32-bit, NixOS i686)     |
-| Server OS           | Linux x86_64, Windows x86_64, macOS x86_64 / arm64                    |
+| Server OS           | Linux x86_64, Windows x86_64                                          |
 | Language            | Rust (workspace: `ph0sphor-server`, `-client`, `-protocol`, `-core`, `ph0sphorctl`) |
 | TUI stack           | `ratatui` + `crossterm`, render on dirty events only, 1–2 FPS cap     |
 | Wire protocol       | Protobuf over WebSocket; delta-mostly, periodic FullSnapshot          |
@@ -62,8 +62,8 @@ sudo install -Dm755 ph0sphorctl     /usr/local/bin/ph0sphorctl
 sudo install -Dm640 examples/server.toml /etc/ph0sphor/server.toml
 ```
 
-For Windows / macOS / systemd-on-Linux, follow the matching
-section under [`packaging/`](packaging/).
+For Windows or systemd-on-Linux, follow the matching section under
+[`packaging/`](packaging/).
 
 ### 2. Install the client on the VAIO P
 

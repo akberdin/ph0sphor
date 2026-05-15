@@ -7,6 +7,13 @@ and this project aspires to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Removed
+- macOS dropped from the supported server platforms. The release
+  workflow no longer builds `macos-x86_64` / `macos-arm64`
+  artifacts, and `packaging/macos/` has been removed along with
+  its references from the README, installation guide, packaging
+  index, roadmap and contributor guide.
+
 ## [0.1.0] - 2026-05-15
 
 First tagged MVP release. Cuts the line between scaffolding and a
