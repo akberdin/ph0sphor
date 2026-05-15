@@ -1,17 +1,28 @@
 # macOS Packaging
 
-The release workflow ships two macOS artifacts:
+The release workflow ships two macOS artifacts. Current release:
+**v0.1.0**.
 
-- **`ph0sphor-<version>-macos-x86_64.tar.gz`** — Intel Macs.
-- **`ph0sphor-<version>-macos-arm64.tar.gz`** — Apple Silicon Macs.
+- **`ph0sphor-v0.1.0-macos-x86_64.tar.gz`** — Intel Macs.
+- **`ph0sphor-v0.1.0-macos-arm64.tar.gz`** — Apple Silicon Macs.
 
 Each tarball contains `ph0sphor-server`, `ph0sphorctl`, `LICENSE`,
 `README.md`, `SECURITY.md` and every example config. The client is
 not built for macOS — its target is the Sony VAIO P running Linux.
 
-## Installation
+## Download and install
+
+Pick the archive matching your CPU (Intel `x86_64`, Apple Silicon
+`arm64`). Apple Silicon example:
 
 ```sh
+REL=v0.1.0
+curl -LO https://github.com/akberdin/ph0sphor/releases/download/$REL/ph0sphor-$REL-macos-arm64.tar.gz
+curl -LO https://github.com/akberdin/ph0sphor/releases/download/$REL/ph0sphor-$REL-macos-arm64.tar.gz.sha256
+shasum -a 256 -c ph0sphor-$REL-macos-arm64.tar.gz.sha256
+tar xzf ph0sphor-$REL-macos-arm64.tar.gz
+cd ph0sphor-$REL-macos-arm64
+
 sudo install -m755 ph0sphor-server /usr/local/bin/ph0sphor-server
 sudo install -m755 ph0sphorctl     /usr/local/bin/ph0sphorctl
 sudo install -d -m700 /etc/ph0sphor
@@ -65,5 +76,5 @@ require an Apple Developer ID.
 ## Checksums
 
 ```sh
-shasum -a 256 -c ph0sphor-vX.Y.Z-macos-arm64.tar.gz.sha256
+shasum -a 256 -c ph0sphor-v0.1.0-macos-arm64.tar.gz.sha256
 ```

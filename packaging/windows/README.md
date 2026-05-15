@@ -1,9 +1,21 @@
 # Windows Packaging
 
-The release workflow ships `ph0sphor-<version>-windows-x86_64.zip`
+The release workflow ships `ph0sphor-v0.1.0-windows-x86_64.zip`
 containing `ph0sphor-server.exe`, `ph0sphorctl.exe`, `LICENSE`,
-`README.md`, `SECURITY.md` and every example config. The client is
-not built for Windows — its target is the Sony VAIO P running Linux.
+`README.md`, `SECURITY.md` and every example config. Current
+release: **v0.1.0**. The client is not built for Windows — its
+target is the Sony VAIO P running Linux.
+
+## Download
+
+```powershell
+$rel = "v0.1.0"
+Invoke-WebRequest -Uri "https://github.com/akberdin/ph0sphor/releases/download/$rel/ph0sphor-$rel-windows-x86_64.zip" -OutFile "ph0sphor-$rel-windows-x86_64.zip"
+Invoke-WebRequest -Uri "https://github.com/akberdin/ph0sphor/releases/download/$rel/ph0sphor-$rel-windows-x86_64.zip.sha256" -OutFile "ph0sphor-$rel-windows-x86_64.zip.sha256"
+Expand-Archive ".\ph0sphor-$rel-windows-x86_64.zip" -DestinationPath C:\Tools
+```
+
+Verify against the `.sha256` (see "Checksums" below).
 
 ## Installation
 
@@ -33,7 +45,7 @@ Firewall for the LAN range you want VAIO clients to reach from.
 ## Checksums
 
 ```powershell
-Get-FileHash -Algorithm SHA256 ph0sphor-vX.Y.Z-windows-x86_64.zip
+Get-FileHash -Algorithm SHA256 ph0sphor-v0.1.0-windows-x86_64.zip
 ```
 
 Compare against the value in the matching `.sha256` file.
