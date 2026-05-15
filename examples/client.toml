@@ -1,0 +1,40 @@
+# PHOSPHOR client example configuration.
+# See docs/configuration.md and README §18.2 for the canonical reference.
+
+[client]
+server = "ws://main-pc.local:7077/ws"
+client_name = "vaio-p"
+# Bearer token presented at handshake. Leave empty on first run — the
+# client will fall into the pairing flow and write the issued token to
+# `token_file` after the operator confirms the displayed code.
+token = ""
+token_file = "~/.config/ph0sphor/token"
+theme = "phosphor-green"
+render_fps = 1
+low_power_mode = true
+
+[ui]
+default_screen = "home"
+show_scanlines = false
+ascii_fallback = true
+compact_mode = true
+
+[cache]
+store_last_snapshot = true
+max_cached_events = 100
+
+[keys]
+next_screen = "Tab"
+prev_screen = "BackTab"
+theme_cycle = "C"
+mute = "M"
+refresh = "R"
+quit = "Q"
+
+[time]
+# Default countdown timer length in seconds. Adjustable at runtime
+# via +/- on the TIME screen.
+timer_default_secs = 300
+# Daily alarms in HH:MM (UTC). Each fires once per day at the matching
+# minute and lands in the event log at Critical severity unless muted.
+alarms = []

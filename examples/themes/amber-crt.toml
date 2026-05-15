@@ -1,0 +1,12 @@
+# Built-in theme: amber-crt (recommended for readability).
+name = "amber-crt"
+foreground = "#ffb000"
+background = "#1a0d00"
+accent     = "#ffd34d"
+warning    = "#ff9933"
+critical   = "#ff5544"
+dim        = "#7a5500"
+border     = "single"
+progress   = "blocks"
+blinking_alerts = false
+ascii_fallback  = false

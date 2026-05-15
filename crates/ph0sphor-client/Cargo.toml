@@ -1,0 +1,38 @@
+[package]
+name = "ph0sphor-client"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "PHOSPHOR client: lightweight phosphor-style telemetry TUI for the Sony VAIO P."
+
+[[bin]]
+name = "ph0sphor-client"
+path = "src/main.rs"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+ph0sphor-core = { workspace = true }
+ph0sphor-protocol = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }
+tokio = { version = "1", features = [
+    "rt-multi-thread",
+    "macros",
+    "signal",
+    "sync",
+    "time",
+] }
+tokio-tungstenite = "0.24"
+futures-util = "0.3"
+ratatui = "0.29"
+crossterm = { version = "0.28", features = ["event-stream"] }
+toml = "0.8"
+
+[dev-dependencies]
+ph0sphor-server = { path = "../ph0sphor-server" }
+tokio = { version = "1", features = ["test-util"] }

@@ -1,0 +1,42 @@
+[package]
+name = "ph0sphor-server"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "PHOSPHOR server: collectors, state store and binary telemetry endpoint."
+
+[[bin]]
+name = "ph0sphor-server"
+path = "src/main.rs"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+ph0sphor-core = { workspace = true }
+ph0sphor-protocol = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { version = "1", features = [
+    "rt-multi-thread",
+    "macros",
+    "signal",
+    "sync",
+    "time",
+    "net",
+    "fs",
+] }
+axum = { version = "0.7", features = ["ws"] }
+sysinfo = "0.32"
+toml = "0.8"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["test-util"] }
+tokio-tungstenite = "0.24"
+futures-util = "0.3"

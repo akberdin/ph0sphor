@@ -1,0 +1,34 @@
+[Unit]
+Description=PHOSPHOR client (%i)
+Documentation=https://github.com/akberdin/ph0sphor
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=%i
+ExecStart=/usr/local/bin/ph0sphor-client --config /etc/ph0sphor/client.toml
+Restart=on-failure
+RestartSec=2
+
+# Drop the client straight onto tty1; the panic hook in main.rs always
+# restores the terminal, so a crash looks like a normal exit to the
+# user and the unit just restarts cleanly.
+StandardInput=tty-force
+StandardOutput=tty
+StandardError=journal
+TTYPath=/dev/tty1
+TTYReset=yes
+TTYVHangup=yes
+
+# The client reads /sys/class/power_supply and /sys/class/net locally
+# (read-only) for battery + iface/IP. It also writes its issued
+# pairing token to %h/.config/ph0sphor/token at mode 0600.
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=%h/.config/ph0sphor
+PrivateTmp=yes
+NoNewPrivileges=yes
+
+[Install]
+WantedBy=default.target

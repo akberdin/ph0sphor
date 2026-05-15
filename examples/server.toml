@@ -1,0 +1,66 @@
+# PHOSPHOR server example configuration.
+# See docs/configuration.md and README §18.1 for the canonical reference.
+
+[server]
+bind = "0.0.0.0:7077"
+# Loopback-only HTTP endpoint used by `ph0sphorctl pair confirm`.
+# Non-loopback peers are rejected even if this binds to a public IP.
+control_bind = "127.0.0.1:7078"
+name = "main-pc"
+protocol = "protobuf"
+debug_json = false
+
+[security]
+pairing_enabled = true
+require_token = true
+# Arbitrary remote command execution is forbidden in MVP per README §14.2;
+# the server has no `ClientCommandRequest` handler regardless of this flag.
+allow_control_commands = false
+# Persistent token store written by the pairing flow. Tokens here are
+# merged with the static `tokens` list for validation. Keep it outside
+# of the repository and use restrictive filesystem permissions (the
+# server writes the file with mode 0600 on Unix).
+token_store = "/var/lib/ph0sphor/tokens.json"
+# pairing_ttl_secs = 300   # default: 5 minutes
+
+[performance]
+main_tick_ms = 1000
+send_deltas_only = true
+full_snapshot_interval_sec = 60
+max_events_in_memory = 200
+
+[collectors.cpu]
+enabled = true
+interval_ms = 1000
+
+[collectors.memory]
+enabled = true
+interval_ms = 1000
+
+[collectors.network]
+enabled = true
+interval_ms = 1000
+
+[collectors.disk]
+enabled = true
+interval_sec = 15
+
+[collectors.gpu]
+enabled = true
+interval_sec = 3
+
+[collectors.mail]
+enabled = false
+interval_sec = 120
+# `count_only` | `sender_subject` | `preview`. README §14.5.
+privacy = "sender_subject"
+# Optional: path to a JSON file the operator updates externally. The
+# expected schema is documented in docs/configuration.md. When omitted,
+# the collector reports zero unread messages.
+# source = "/var/lib/ph0sphor/mail.json"
+
+[collectors.weather]
+enabled = false
+interval_sec = 1800
+# Optional: path to a JSON file the operator updates externally.
+# source = "/var/lib/ph0sphor/weather.json"

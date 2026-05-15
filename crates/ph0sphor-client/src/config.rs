@@ -1,0 +1,170 @@
+//! Client configuration. Mirrors README §18.2.
+
+use crate::theme::Theme;
+use serde::{Deserialize, Serialize};
+use std::path::Path;
+use thiserror::Error;
+
+#[derive(Debug, Error)]
+pub enum ConfigError {
+    #[error("failed to read config file {path}: {source}")]
+    Read {
+        path: String,
+        #[source]
+        source: std::io::Error,
+    },
+    #[error("failed to parse config: {0}")]
+    Parse(#[from] toml::de::Error),
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct ClientConfig {
+    pub client: ClientSection,
+    pub ui: UiSection,
+    pub cache: CacheSection,
+    pub keys: KeysSection,
+    pub time: TimeSection,
+}
+
+/// Local-only time-domain features for the TIME screen. Per
+/// README §15.8, these must work even when the link is offline.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct TimeSection {
+    /// Default countdown (seconds) for the timer. Adjustable at runtime
+    /// with `+` / `-` on the TIME screen.
+    pub timer_default_secs: u64,
+    /// Alarm targets in `"HH:MM"` UTC. Each entry fires once per day
+    /// at its minute boundary.
+    pub alarms: Vec<String>,
+}
+
+impl Default for TimeSection {
+    fn default() -> Self {
+        Self {
+            timer_default_secs: 5 * 60,
+            alarms: Vec::new(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct ClientSection {
+    pub server: String,
+    pub client_name: String,
+    /// Optional bearer token presented at handshake. Empty means
+    /// "anonymous" — works only when the server is configured with
+    /// `require_token = false`, otherwise the client falls into the
+    /// pairing flow and the resulting token is written to `token_file`.
+    pub token: String,
+    /// Path to the file that stores the pairing-issued token between
+    /// runs. Empty disables persistence (in-memory pairing only).
+    pub token_file: String,
+    pub theme: Theme,
+    pub render_fps: u32,
+    pub low_power_mode: bool,
+}
+
+impl Default for ClientSection {
+    fn default() -> Self {
+        Self {
+            server: "ws://127.0.0.1:7077/ws".into(),
+            client_name: "vaio-p".into(),
+            token: String::new(),
+            token_file: default_token_file(),
+            theme: Theme::PhosphorGreen,
+            render_fps: 1,
+            low_power_mode: true,
+        }
+    }
+}
+
+fn default_token_file() -> String {
+    std::env::var("XDG_CONFIG_HOME")
+        .ok()
+        .or_else(|| std::env::var("HOME").ok().map(|h| format!("{h}/.config")))
+        .map(|dir| format!("{dir}/ph0sphor/token"))
+        .unwrap_or_default()
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct UiSection {
+    pub default_screen: String,
+    pub show_scanlines: bool,
+    pub ascii_fallback: bool,
+    pub compact_mode: bool,
+}
+
+impl Default for UiSection {
+    fn default() -> Self {
+        Self {
+            default_screen: "home".into(),
+            show_scanlines: false,
+            ascii_fallback: true,
+            compact_mode: true,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct CacheSection {
+    pub store_last_snapshot: bool,
+    pub max_cached_events: usize,
+}
+
+impl Default for CacheSection {
+    fn default() -> Self {
+        Self {
+            store_last_snapshot: true,
+            max_cached_events: 100,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct KeysSection {
+    pub next_screen: Option<String>,
+    pub prev_screen: Option<String>,
+    pub theme_cycle: Option<String>,
+    pub mute: Option<String>,
+    pub refresh: Option<String>,
+    pub quit: Option<String>,
+}
+
+impl ClientConfig {
+    pub fn load_from_path(path: impl AsRef<Path>) -> Result<Self, ConfigError> {
+        let path_str = path.as_ref().display().to_string();
+        let raw = std::fs::read_to_string(&path).map_err(|source| ConfigError::Read {
+            path: path_str,
+            source,
+        })?;
+        Ok(toml::from_str(&raw)?)
+    }
+
+    /// Demo profile: no server reachable, theme defaulted.
+    pub fn demo() -> Self {
+        let mut cfg = Self::default();
+        cfg.client.server = "ws://127.0.0.1:0/ws".into();
+        cfg.client.client_name = "vaio-p-demo".into();
+        cfg
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn readme_example_parses() {
+        let raw = include_str!("../../../examples/client.toml");
+        let cfg: ClientConfig = toml::from_str(raw).expect("parse example config");
+        assert_eq!(cfg.client.client_name, "vaio-p");
+        assert_eq!(cfg.client.theme, Theme::PhosphorGreen);
+        assert!(cfg.ui.compact_mode);
+    }
+}

@@ -1,0 +1,21 @@
+[package]
+name = "ph0sphor-protocol"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "Wire schema and encode/decode logic for the PHOSPHOR protocol."
+build = "build.rs"
+
+[dependencies]
+ph0sphor-core = { workspace = true }
+prost = "0.13"
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+
+[build-dependencies]
+prost-build = "0.13"
+protoc-bin-vendored = "3"

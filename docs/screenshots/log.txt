@@ -1,0 +1,16 @@
+PHOSPHOR :: LOG    2026-05-14  15:42:08
+LINK: ONLINE   HOST: main-pc   UP: 02:34:12   BAT: -73% DSC   NET: wlan0 192.168.1.42
+-------------------------------------------------------------------------------
++- EVENT LOG ----------------------------------------------------------------+
+| 15:42:08  LINK: ONLINE                                                    |
+| 15:42:05  server: collector_recovered cpu                                 |
+| 15:41:30  NEW MAIL (1): ops@example.com — Backup completed                |
+| 15:40:00  TIMER: completed                                                |
+| 15:39:12  link stats: 4128 B in 122s (33 B/s) — full=2, delta=240         |
+| 15:38:00  ALARM: 15:38 UTC                                                |
+| 15:35:14  client paired — token stored                                    |
+| 15:34:00  LINK: AUTH                                                      |
+| 15:34:00  LINK: CONNECT                                                   |
+| 15:33:58  refresh requested                                               |
++----------------------------------------------------------------------------+
+[1]HOME [2]SYS [3]MAIL [4]TIME [5]WTHR [6]LOG   [Tab]next  [C]theme:phosphor-green  [R]refresh  [Q]quit

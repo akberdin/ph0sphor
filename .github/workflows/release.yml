@@ -1,0 +1,177 @@
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Pre-release tag (workflow_dispatch only)'
+        required: false
+        default: 'preview'
+
+env:
+  CARGO_TERM_COLOR: always
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: build ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Linux: server + ctl + client (native x86_64).
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact: linux-x86_64
+            binaries: 'ph0sphor-server ph0sphor-client ph0sphorctl'
+            cross: false
+            archive: tar.gz
+
+          # Linux i686 client (VAIO P primary target).
+          - os: ubuntu-latest
+            target: i686-unknown-linux-musl
+            artifact: linux-i686
+            binaries: 'ph0sphor-client'
+            cross: true
+            archive: tar.gz
+
+          # Windows: server + ctl only — the client is built for Linux only.
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact: windows-x86_64
+            binaries: 'ph0sphor-server.exe ph0sphorctl.exe'
+            cross: false
+            archive: zip
+
+          # macOS Intel.
+          - os: macos-13
+            target: x86_64-apple-darwin
+            artifact: macos-x86_64
+            binaries: 'ph0sphor-server ph0sphorctl'
+            cross: false
+            archive: tar.gz
+
+          # macOS Apple Silicon.
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            artifact: macos-arm64
+            binaries: 'ph0sphor-server ph0sphorctl'
+            cross: false
+            archive: tar.gz
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: release-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            release-${{ matrix.target }}-
+
+      - name: Install cross
+        if: matrix.cross
+        run: cargo install cross --locked
+
+      - name: Build
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Translate the space-separated binary list into -p flags. The
+          # ph0sphor-protocol crate builds its own protoc via the
+          # vendored crate, so no system protoc is needed on any runner.
+          crates=()
+          for bin in ${{ matrix.binaries }}; do
+            case "$bin" in
+              ph0sphor-server*) crates+=(-p ph0sphor-server) ;;
+              ph0sphor-client*) crates+=(-p ph0sphor-client) ;;
+              ph0sphorctl*)     crates+=(-p ph0sphorctl) ;;
+            esac
+          done
+          if [ "${{ matrix.cross }}" = "true" ]; then
+            cross build --release --target ${{ matrix.target }} "${crates[@]}"
+          else
+            cargo build --release --target ${{ matrix.target }} "${crates[@]}"
+          fi
+
+      - name: Stage artifact (Unix)
+        if: matrix.archive == 'tar.gz'
+        shell: bash
+        run: |
+          set -euo pipefail
+          name="ph0sphor-${GITHUB_REF_NAME}-${{ matrix.artifact }}"
+          # GITHUB_REF_NAME is 'preview' on workflow_dispatch unless the
+          # caller overrides it.
+          if [ "${GITHUB_REF_TYPE:-}" != "tag" ]; then
+            name="ph0sphor-${{ github.event.inputs.tag || 'preview' }}-${{ matrix.artifact }}"
+          fi
+          mkdir -p "dist/$name"
+          for bin in ${{ matrix.binaries }}; do
+            cp "target/${{ matrix.target }}/release/$bin" "dist/$name/"
+          done
+          cp LICENSE README.md SECURITY.md "dist/$name/"
+          cp -r examples "dist/$name/"
+          # Include the systemd units on Linux only.
+          if [ "${{ runner.os }}" = "Linux" ]; then
+            mkdir -p "dist/$name/packaging"
+            cp packaging/linux/*.service "dist/$name/packaging/" 2>/dev/null || true
+          fi
+          ( cd dist && tar czf "$name.tar.gz" "$name" )
+          ( cd dist && sha256sum "$name.tar.gz" > "$name.tar.gz.sha256" )
+          echo "ASSET=dist/$name.tar.gz" >> "$GITHUB_ENV"
+          echo "ASSET_SHA=dist/$name.tar.gz.sha256" >> "$GITHUB_ENV"
+
+      - name: Stage artifact (Windows)
+        if: matrix.archive == 'zip'
+        shell: pwsh
+        run: |
+          $name = "ph0sphor-$env:GITHUB_REF_NAME-${{ matrix.artifact }}"
+          if ($env:GITHUB_REF_TYPE -ne 'tag') {
+            $tag = "${{ github.event.inputs.tag }}"
+            if (-not $tag) { $tag = 'preview' }
+            $name = "ph0sphor-$tag-${{ matrix.artifact }}"
+          }
+          $stage = "dist/$name"
+          New-Item -ItemType Directory -Force -Path $stage | Out-Null
+          foreach ($bin in "${{ matrix.binaries }}".Split(' ')) {
+            Copy-Item "target/${{ matrix.target }}/release/$bin" $stage
+          }
+          Copy-Item LICENSE,README.md,SECURITY.md $stage
+          Copy-Item examples -Destination $stage -Recurse
+          Compress-Archive -Path $stage -DestinationPath "dist/$name.zip" -Force
+          $h = Get-FileHash -Algorithm SHA256 "dist/$name.zip"
+          "$($h.Hash.ToLower())  $name.zip" | Out-File -FilePath "dist/$name.zip.sha256" -Encoding ASCII
+          "ASSET=dist/$name.zip" | Out-File -FilePath $env:GITHUB_ENV -Encoding ASCII -Append
+          "ASSET_SHA=dist/$name.zip.sha256" | Out-File -FilePath $env:GITHUB_ENV -Encoding ASCII -Append
+
+      - name: Upload to release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ${{ env.ASSET }}
+            ${{ env.ASSET_SHA }}
+
+      - name: Upload as workflow artifact
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: |
+            ${{ env.ASSET }}
+            ${{ env.ASSET_SHA }}

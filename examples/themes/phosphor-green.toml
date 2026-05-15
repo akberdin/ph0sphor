@@ -1,0 +1,12 @@
+# Built-in theme: phosphor-green (default).
+name = "phosphor-green"
+foreground = "#33ff66"
+background = "#001100"
+accent     = "#88ffaa"
+warning    = "#ffd866"
+critical   = "#ff5577"
+dim        = "#226633"
+border     = "double"
+progress   = "blocks"
+blinking_alerts = false
+ascii_fallback  = false
