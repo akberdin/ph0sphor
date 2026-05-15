@@ -7,7 +7,19 @@ and this project aspires to follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-05-15
+
+First tagged MVP release. Cuts the line between scaffolding and a
+working server/client/ctl trio that pairs, streams telemetry and
+recovers from disconnects. Linux x86_64 and i686 (VAIO P), Windows
+x86_64 and macOS x86_64/arm64 binaries are published as release
+assets via `.github/workflows/release.yml`.
+
 ### Added
+- `docs/vaio-p-client-vm-testing.md`: antiX 32-bit VirtualBox
+  walkthrough for exercising the client without real VAIO P
+  hardware (NAT/Bridged networking, demo mode, pairing, manual
+  test checklist).
 - Project skeleton (Milestone 0): LICENSE, SECURITY.md, CONTRIBUTING.md,
   Rust workspace with `ph0sphor-core`, `ph0sphor-protocol`,
   `ph0sphor-server`, `ph0sphor-client`, `ph0sphorctl` crates.

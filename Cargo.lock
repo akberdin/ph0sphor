@@ -770,7 +770,7 @@ dependencies = [
 
 [[package]]
 name = "ph0sphor-client"
-version = "0.0.1"
+version = "0.1.0"
 dependencies = [
  "crossterm",
  "futures-util",
@@ -787,7 +787,7 @@ dependencies = [
 
 [[package]]
 name = "ph0sphor-core"
-version = "0.0.1"
+version = "0.1.0"
 dependencies = [
  "serde",
  "thiserror",
@@ -795,7 +795,7 @@ dependencies = [
 
 [[package]]
 name = "ph0sphor-protocol"
-version = "0.0.1"
+version = "0.1.0"
 dependencies = [
  "ph0sphor-core",
  "prost",
@@ -808,7 +808,7 @@ dependencies = [
 
 [[package]]
 name = "ph0sphor-server"
-version = "0.0.1"
+version = "0.1.0"
 dependencies = [
  "axum",
  "futures-util",
@@ -827,7 +827,7 @@ dependencies = [
 
 [[package]]
 name = "ph0sphorctl"
-version = "0.0.1"
+version = "0.1.0"
 dependencies = [
  "ph0sphor-core",
  "ph0sphor-protocol",
