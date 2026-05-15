@@ -9,6 +9,7 @@
 pub mod app;
 pub mod config;
 pub mod event;
+pub mod local;
 pub mod net;
 pub mod state;
 pub mod theme;

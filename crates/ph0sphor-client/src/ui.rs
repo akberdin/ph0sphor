@@ -6,14 +6,45 @@
 //! per-frame allocation that the budget could not absorb at 1–2 FPS.
 
 use crate::event::LogSeverity;
+use crate::local::{BatteryInfo, BatteryStatus};
 use crate::state::{AppState, LogEntry, Screen};
 use crate::theme::ThemePalette;
 use ph0sphor_core::Snapshot;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::{Modifier, Style};
+use ratatui::symbols::border;
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Gauge, List, ListItem, Paragraph};
 use ratatui::Frame;
+
+/// Border-character set used when `ui.ascii_fallback = true`. ratatui
+/// ships `PLAIN`/`ROUNDED`/`DOUBLE`/`THICK` but no ASCII variant; we
+/// build our own here for terminals without box-drawing support.
+const ASCII_BORDER: border::Set = border::Set {
+    top_left: "+",
+    top_right: "+",
+    bottom_left: "+",
+    bottom_right: "+",
+    vertical_left: "|",
+    vertical_right: "|",
+    horizontal_top: "-",
+    horizontal_bottom: "-",
+};
+
+fn pick_border(ascii: bool) -> border::Set {
+    if ascii {
+        ASCII_BORDER
+    } else {
+        border::PLAIN
+    }
+}
+
+fn block_with_borders<'a>(palette: &ThemePalette, ascii: bool) -> Block<'a> {
+    Block::default()
+        .borders(Borders::ALL)
+        .border_set(pick_border(ascii))
+        .border_style(Style::default().fg(palette.dim))
+}
 
 pub fn draw(frame: &mut Frame, app: &AppState) {
     let palette = ThemePalette::for_theme(app.theme);
@@ -24,12 +55,17 @@ pub fn draw(frame: &mut Frame, app: &AppState) {
     let base = Block::default().style(Style::default().fg(palette.fg).bg(palette.bg));
     frame.render_widget(base, area);
 
+    // Compact mode collapses the header from two lines to one — useful
+    // on the VAIO P's 24-row terminals after `Constraint::Length(3)`
+    // for the gauges and `Length(1)` for the status bar leaves only a
+    // few rows for the body.
+    let header_height = if app.config.ui.compact_mode { 2 } else { 3 };
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(3), // header
-            Constraint::Min(0),    // body
-            Constraint::Length(1), // status bar
+            Constraint::Length(header_height), // header
+            Constraint::Min(0),                // body
+            Constraint::Length(1),             // status bar
         ])
         .split(area);
 
@@ -99,7 +135,9 @@ fn render_pairing_banner(frame: &mut Frame, area: Rect, code: &str, palette: &Th
 // ---------------------------------------------------------------------------
 
 fn render_header(frame: &mut Frame, area: Rect, app: &AppState, palette: &ThemePalette) {
-    let title = format!("PHOSPHOR :: {}", app.screen.label());
+    let ascii = app.config.ui.ascii_fallback;
+    let separator = if ascii { ":" } else { "::" };
+    let title = format!("PHOSPHOR {separator} {}", app.screen.label());
     let (date, time) = format_clock_now();
     let link_style = link_style_for(app.connection, palette);
     let host = if app.snapshot.hostname.is_empty() {
@@ -113,38 +151,110 @@ fn render_header(frame: &mut Frame, area: Rect, app: &AppState, palette: &ThemeP
         ""
     };
 
-    let header = Paragraph::new(vec![
-        Line::from(vec![
+    let mut info_spans = vec![
+        Span::styled("LINK: ", Style::default().fg(palette.dim)),
+        Span::styled(app.connection.label(), link_style),
+        Span::styled(stale, Style::default().fg(palette.warning)),
+        Span::raw("   "),
+        Span::styled("HOST: ", Style::default().fg(palette.dim)),
+        Span::styled(host, Style::default().fg(palette.fg)),
+        Span::raw("   "),
+        Span::styled("UP: ", Style::default().fg(palette.dim)),
+        Span::styled(
+            format_uptime(app.snapshot.uptime_secs),
+            Style::default().fg(palette.fg),
+        ),
+    ];
+
+    // Append local VAIO-side battery + iface/IP. They are always
+    // available even when offline (refreshed every Tick), so this slot
+    // doubles as a "we're alive" indicator during reconnect storms.
+    if let Some(b) = app.local.battery {
+        info_spans.push(Span::raw("   "));
+        info_spans.push(Span::styled("BAT: ", Style::default().fg(palette.dim)));
+        info_spans.push(Span::styled(
+            format_battery(b),
+            Style::default().fg(battery_color(b, palette)),
+        ));
+    }
+    if let Some(ip) = app.local.ip {
+        info_spans.push(Span::raw("   "));
+        let label = match app.local.iface.as_deref() {
+            Some(name) => format!("{name} {ip}"),
+            None => format!("{ip}"),
+        };
+        info_spans.push(Span::styled("NET: ", Style::default().fg(palette.dim)));
+        info_spans.push(Span::styled(label, Style::default().fg(palette.fg)));
+    }
+
+    let title_line = Line::from(vec![
+        Span::styled(
+            title,
+            Style::default()
+                .fg(palette.accent)
+                .add_modifier(Modifier::BOLD),
+        ),
+        Span::raw("   "),
+        Span::styled(format!("{date}  {time}"), Style::default().fg(palette.fg)),
+    ]);
+
+    let header = if app.config.ui.compact_mode {
+        // One-line header: title + LINK + HOST only, dropping the rest.
+        let mut line = vec![
             Span::styled(
-                title,
+                format!("PHOSPHOR {separator} {}", app.screen.label()),
                 Style::default()
                     .fg(palette.accent)
                     .add_modifier(Modifier::BOLD),
             ),
-            Span::raw("   "),
-            Span::styled(format!("{date}  {time}"), Style::default().fg(palette.fg)),
-        ]),
-        Line::from(vec![
-            Span::styled("LINK: ", Style::default().fg(palette.dim)),
+            Span::raw("  "),
+            Span::styled(time.clone(), Style::default().fg(palette.fg)),
+            Span::raw("  "),
+            Span::styled("LINK ", Style::default().fg(palette.dim)),
             Span::styled(app.connection.label(), link_style),
-            Span::styled(stale, Style::default().fg(palette.warning)),
-            Span::raw("   "),
-            Span::styled("HOST: ", Style::default().fg(palette.dim)),
-            Span::styled(host, Style::default().fg(palette.fg)),
-            Span::raw("   "),
-            Span::styled("UP: ", Style::default().fg(palette.dim)),
-            Span::styled(
-                format_uptime(app.snapshot.uptime_secs),
-                Style::default().fg(palette.fg),
-            ),
-        ]),
-    ])
-    .block(
-        Block::default()
-            .borders(Borders::BOTTOM)
-            .border_style(Style::default().fg(palette.dim)),
-    );
+        ];
+        if let Some(b) = app.local.battery {
+            line.push(Span::raw("  "));
+            line.push(Span::styled("BAT ", Style::default().fg(palette.dim)));
+            line.push(Span::styled(
+                format_battery(b),
+                Style::default().fg(battery_color(b, palette)),
+            ));
+        }
+        Paragraph::new(Line::from(line)).block(
+            Block::default()
+                .borders(Borders::BOTTOM)
+                .border_set(pick_border(ascii))
+                .border_style(Style::default().fg(palette.dim)),
+        )
+    } else {
+        Paragraph::new(vec![title_line, Line::from(info_spans)]).block(
+            Block::default()
+                .borders(Borders::BOTTOM)
+                .border_set(pick_border(ascii))
+                .border_style(Style::default().fg(palette.dim)),
+        )
+    };
     frame.render_widget(header, area);
+}
+
+fn format_battery(b: BatteryInfo) -> String {
+    let arrow = match b.status {
+        BatteryStatus::Charging => "+",
+        BatteryStatus::Discharging => "-",
+        _ => "",
+    };
+    format!("{}{}% {}", arrow, b.charge_percent, b.status.short_label())
+}
+
+fn battery_color(b: BatteryInfo, palette: &ThemePalette) -> ratatui::style::Color {
+    if b.charge_percent < 15 && b.status == BatteryStatus::Discharging {
+        palette.critical
+    } else if b.charge_percent < 30 {
+        palette.warning
+    } else {
+        palette.fg
+    }
 }
 
 fn link_style_for(status: crate::event::ConnectionStatus, palette: &ThemePalette) -> Style {
@@ -162,6 +272,7 @@ fn link_style_for(status: crate::event::ConnectionStatus, palette: &ThemePalette
 // ---------------------------------------------------------------------------
 
 fn render_home(frame: &mut Frame, area: Rect, app: &AppState, palette: &ThemePalette) {
+    let ascii = app.config.ui.ascii_fallback;
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
@@ -178,8 +289,9 @@ fn render_home(frame: &mut Frame, area: Rect, app: &AppState, palette: &ThemePal
         chunks[0],
         "CPU",
         snap.cpu.usage_percent,
-        format_cpu_label(snap),
+        format_cpu_label(snap, ascii),
         palette,
+        ascii,
     );
 
     let mem_pct = percent(snap.memory.used_bytes, snap.memory.total_bytes);
@@ -188,10 +300,12 @@ fn render_home(frame: &mut Frame, area: Rect, app: &AppState, palette: &ThemePal
         format_bytes(snap.memory.used_bytes),
         format_bytes(snap.memory.total_bytes)
     );
-    render_gauge(frame, chunks[1], "RAM", mem_pct, mem_label, palette);
+    render_gauge(frame, chunks[1], "RAM", mem_pct, mem_label, palette, ascii);
 
     let (disk_pct, disk_label) = disk_summary(snap);
-    render_gauge(frame, chunks[2], "DSK", disk_pct, disk_label, palette);
+    render_gauge(
+        frame, chunks[2], "DSK", disk_pct, disk_label, palette, ascii,
+    );
 
     render_event_list(frame, chunks[3], app, palette, 6, "RECENT EVENTS");
 }
@@ -203,6 +317,7 @@ fn render_gauge(
     pct: f32,
     label: String,
     palette: &ThemePalette,
+    ascii: bool,
 ) {
     let ratio = (pct / 100.0).clamp(0.0, 1.0) as f64;
     let color = if pct >= 90.0 {
@@ -213,15 +328,11 @@ fn render_gauge(
         palette.accent
     };
     let gauge = Gauge::default()
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .border_style(Style::default().fg(palette.dim))
-                .title(Span::styled(
-                    format!(" {title} "),
-                    Style::default().fg(palette.accent),
-                )),
-        )
+        .block(block_with_borders(palette, ascii).title(Span::styled(
+            format!(" {title} "),
+            Style::default().fg(palette.accent),
+        )))
+        .use_unicode(!ascii)
         .gauge_style(Style::default().fg(color).bg(palette.bg))
         .ratio(ratio)
         .label(Span::styled(
@@ -237,6 +348,7 @@ fn render_gauge(
 
 fn render_sys(frame: &mut Frame, area: Rect, app: &AppState, palette: &ThemePalette) {
     let snap = &app.snapshot;
+    let ascii = app.config.ui.ascii_fallback;
     let mut lines: Vec<Line> = Vec::new();
 
     let title_style = Style::default()
@@ -252,7 +364,7 @@ fn render_sys(frame: &mut Frame, area: Rect, app: &AppState, palette: &ThemePale
     lines.push(Line::from(vec![kv(
         "  temp",
         match snap.cpu.temperature_c {
-            Some(t) => format!("{t:.1}°C"),
+            Some(t) => format!("{t:.1}{}", if ascii { "C" } else { "°C" }),
             None => "N/A".to_string(),
         },
         palette,
@@ -324,10 +436,12 @@ fn render_sys(frame: &mut Frame, area: Rect, app: &AppState, palette: &ThemePale
         )));
     } else {
         for n in &snap.network {
+            let dn = if ascii { "dn" } else { "↓" };
+            let up = if ascii { "up" } else { "↑" };
             lines.push(Line::from(vec![kv(
                 &format!("  {}", n.interface),
                 format!(
-                    "↓ {}/s   ↑ {}/s",
+                    "{dn} {}/s   {up} {}/s",
                     format_bytes(n.rx_bytes_per_sec),
                     format_bytes(n.tx_bytes_per_sec)
                 ),
@@ -336,15 +450,10 @@ fn render_sys(frame: &mut Frame, area: Rect, app: &AppState, palette: &ThemePale
         }
     }
 
-    let body = Paragraph::new(lines).block(
-        Block::default()
-            .borders(Borders::ALL)
-            .border_style(Style::default().fg(palette.dim))
-            .title(Span::styled(
-                " SYSTEM ",
-                Style::default().fg(palette.accent),
-            )),
-    );
+    let body = Paragraph::new(lines).block(block_with_borders(palette, ascii).title(Span::styled(
+        " SYSTEM ",
+        Style::default().fg(palette.accent),
+    )));
     frame.render_widget(body, area);
 }
 
@@ -431,9 +540,7 @@ fn render_mail(frame: &mut Frame, area: Rect, app: &AppState, palette: &ThemePal
         }
     }
 
-    let block = Block::default()
-        .borders(Borders::ALL)
-        .border_style(Style::default().fg(palette.dim))
+    let block = block_with_borders(palette, app.config.ui.ascii_fallback)
         .title(Span::styled(" MAIL ", title_style));
     frame.render_widget(Paragraph::new(lines).block(block), area);
 }
@@ -537,9 +644,7 @@ fn render_time(frame: &mut Frame, area: Rect, app: &AppState, palette: &ThemePal
         }
     }
 
-    let block = Block::default()
-        .borders(Borders::ALL)
-        .border_style(Style::default().fg(palette.dim))
+    let block = block_with_borders(palette, app.config.ui.ascii_fallback)
         .title(Span::styled(" TIME ", title_style));
     frame.render_widget(Paragraph::new(lines).block(block), area);
 }
@@ -633,9 +738,7 @@ fn render_weather(frame: &mut Frame, area: Rect, app: &AppState, palette: &Theme
         }
     }
 
-    let block = Block::default()
-        .borders(Borders::ALL)
-        .border_style(Style::default().fg(palette.dim))
+    let block = block_with_borders(palette, app.config.ui.ascii_fallback)
         .title(Span::styled(" WEATHER ", title_style));
     frame.render_widget(Paragraph::new(lines).block(block), area);
 }
@@ -664,13 +767,10 @@ fn render_event_list(
         .map(|e| format_event(e, palette))
         .collect();
 
-    let block = Block::default()
-        .borders(Borders::ALL)
-        .border_style(Style::default().fg(palette.dim))
-        .title(Span::styled(
-            format!(" {title} "),
-            Style::default().fg(palette.accent),
-        ));
+    let block = block_with_borders(palette, app.config.ui.ascii_fallback).title(Span::styled(
+        format!(" {title} "),
+        Style::default().fg(palette.accent),
+    ));
 
     if items.is_empty() {
         let p = Paragraph::new(Span::styled(
@@ -736,9 +836,10 @@ fn kv<'a>(label: &str, value: String, palette: &ThemePalette) -> Span<'a> {
     )
 }
 
-fn format_cpu_label(snap: &Snapshot) -> String {
+fn format_cpu_label(snap: &Snapshot, ascii: bool) -> String {
+    let degree = if ascii { "C" } else { "°C" };
     let temp = match snap.cpu.temperature_c {
-        Some(t) => format!("  {t:.0}°C"),
+        Some(t) => format!("  {t:.0}{degree}"),
         None => String::new(),
     };
     let cores = match snap.cpu.core_count {

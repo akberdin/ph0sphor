@@ -2,6 +2,7 @@
 
 use crate::config::ClientConfig;
 use crate::event::{AppEvent, ConnectionStatus, LogSeverity};
+use crate::local::LocalInfo;
 use crate::theme::{next_theme, Theme};
 use ph0sphor_core::Snapshot;
 use std::collections::VecDeque;
@@ -199,6 +200,10 @@ pub struct AppState {
     /// Whether we have ever seen a mail snapshot (so the first one
     /// doesn't read as a flood of new messages).
     pub mail_seeded: bool,
+    /// VAIO-side battery + Wi-Fi/IP info, refreshed on every Tick.
+    /// Local reads only — never sourced from the server (Milestone 7,
+    /// README §15.11).
+    pub local: LocalInfo,
 }
 
 impl AppState {
@@ -234,6 +239,7 @@ impl AppState {
             time: TimeState::new(timer_preset, alarms),
             last_seen_unread_count: 0,
             mail_seeded: false,
+            local: LocalInfo::refresh(),
         }
     }
 
@@ -266,6 +272,7 @@ impl AppState {
         match event {
             AppEvent::Tick => {
                 self.check_time_events();
+                self.local = LocalInfo::refresh();
                 true
             }
             AppEvent::Snapshot(snap) => {

@@ -150,16 +150,27 @@ event log on every count increase.
 
 ## Milestone 7 — VAIO P Polish
 
+Goal: the VAIO P can boot directly into PHOSPHOR and operate like a
+dedicated terminal appliance.
+
 ```
-[ ] VAIO P Linux setup guide.
-[ ] Autostart instructions.
-[ ] Tune layout for 1600x768.
-[ ] Compact mode.
-[ ] ASCII fallback.
-[ ] Terminal font recommendations.
-[ ] VAIO battery status.
-[ ] Wi-Fi/IP status.
+[x] VAIO P Linux setup guide.
+[x] Autostart instructions.
+[x] Tune layout for 1600x768.
+[x] Compact mode.
+[x] ASCII fallback.
+[x] Terminal font recommendations.
+[x] VAIO battery status.
+[x] Wi-Fi/IP status.
 ```
+
+`docs/vaio-p-client.md` is now the canonical setup guide and bundles a
+hardened systemd unit + an Alpine/OpenRC autologin recipe. `compact_mode`
+collapses the header to a single line; `ascii_fallback` swaps borders,
+gauge fills and arrow glyphs for ASCII equivalents. The new
+`ph0sphor-client::local` module reads `/sys/class/power_supply/BAT*` and
+default-iface IP locally so the header keeps showing live battery + IP
+even when the link is down.
 
 ## Milestone 8 — Packaging and Releases
 

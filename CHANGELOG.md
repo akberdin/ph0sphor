@@ -189,3 +189,28 @@ and this project aspires to follow [Semantic Versioning](https://semver.org/).
     populates for mail and weather.
   - 4 new client unit tests (six-screen navigation, timer toggles,
     `parse_hhmm_to_minute_of_day`, new-mail detector seeding).
+- VAIO P polish (Milestone 7):
+  - `ph0sphor-client::local` reads `/sys/class/power_supply/BAT*`
+    (`BAT0`/`BAT1`/...), the default outbound IP via a UDP-connect
+    trick, and the first up non-loopback interface from
+    `/sys/class/net/`. No new dependency. Refreshed on every Tick so
+    the header keeps updating during a disconnect.
+  - Header now carries `BAT XX% CHG/DSC/FUL` and `NET wlan0 192.168...`.
+    Battery turns warning-yellow below 30 % and critical-red below
+    15 % on discharge.
+  - `ui.compact_mode` actually does something now: collapses the
+    header to a single line and shrinks `Constraint::Length(3)` to
+    `Length(2)` so a 24-row VAIO P TTY still gets a usable body.
+  - `ui.ascii_fallback` switches every box-drawing border to
+    `+ - |`, swaps `Gauge::use_unicode` to false, replaces `°C` with
+    `C`, `↓/↑` with `dn/up`, and `::` in the title with `:`. Every
+    bordered block now goes through the new `block_with_borders`
+    helper to make this consistent.
+  - `docs/vaio-p-client.md` rewritten as a real appliance setup guide:
+    hardware/OS choices, Cozette/Spleen/Terminus font table,
+    1600×768 layout regimes, hardened `systemd` unit
+    (`ProtectSystem=strict`, `NoNewPrivileges=yes`,
+    `TTYPath=/dev/tty1`), Alpine/OpenRC autologin recipe, pairing
+    walkthrough, and operational notes.
+  - 2 new client unit tests in `local` (smoke-test refresh on any
+    host, battery status labels are three chars wide).
